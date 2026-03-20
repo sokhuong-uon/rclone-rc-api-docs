@@ -251,12 +251,27 @@ components:
         os:
           type: string
           example: linux
+        osKernel:
+          type: string
+          example: "6.8.0-86-generic (x86_64)"
+        osVersion:
+          type: string
+          example: "ubuntu 24.04 (64 bit)"
+        osArch:
+          type: string
+          example: "arm64 (ARMv8 compatible)"
         arch:
           type: string
-          example: amd64
+          example: arm64
         goVersion:
           type: string
-          example: go1.22
+          example: go1.25.0
+        linking:
+          type: string
+          example: static
+        goTags:
+          type: string
+          example: "cmount webdav"
     BandwidthLimit:
       type: object
       properties:
@@ -358,23 +373,49 @@ components:
     TransferStats:
       type: object
       properties:
-        speed:
-          type: number
         bytes:
           type: integer
-        errors:
-          type: integer
-        fatalError:
-          type: boolean
         checks:
-          type: integer
-        transfers:
           type: integer
         deletes:
           type: integer
         elapsedTime:
           type: number
+        errors:
+          type: integer
+        eta:
+          type: integer
+          nullable: true
+          description: Estimated seconds until group completes, or null if unknown.
+        fatalError:
+          type: boolean
+        lastError:
+          type: string
+        listed:
+          type: integer
+        renames:
+          type: integer
+        retryError:
+          type: boolean
+        serverSideCopies:
+          type: integer
+        serverSideCopyBytes:
+          type: integer
+        serverSideMoves:
+          type: integer
+        serverSideMoveBytes:
+          type: integer
+        speed:
+          type: number
         totalBytes:
+          type: integer
+        totalChecks:
+          type: integer
+        totalTransfers:
+          type: integer
+        transferTime:
+          type: number
+        transfers:
           type: integer
         transferring:
           type: array
@@ -388,9 +429,18 @@ components:
               bytes:
                 type: integer
               percentage:
-                type: integer
+                type: number
               speed:
                 type: number
+              speedAvg:
+                type: number
+              eta:
+                type: integer
+                nullable: true
+        checking:
+          type: array
+          items:
+            type: string
     MountOptions:
       type: object
       properties:
