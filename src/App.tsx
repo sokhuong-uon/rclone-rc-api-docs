@@ -10,6 +10,8 @@ function App() {
         layout: "modern",
         darkMode: true,
         hideModels: false,
+        expandAllModelSections: true,
+        showDeveloperTools: "localhost",
         defaultHttpClient: {
           targetKey: "js",
           clientKey: "axio",

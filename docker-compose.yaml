@@ -1,0 +1,22 @@
+services:
+  rclone-rc:
+    image: rclone/rclone:latest
+    container_name: rclone-rc
+    restart: unless-stopped
+    command: >
+      rcd
+      --rc-addr=:5572
+      --rc-no-auth
+      --rc-enable-metrics
+      --rc-serve
+      --rc-web-gui
+      --rc-web-gui-no-open-browser
+      --rc-allow-origin=http://localhost:5173
+      --log-level=DEBUG
+      --log-file=/logs/rclone.log
+    ports:
+      - "5572:5572"
+    volumes:
+      # - ./rclone-config:/config/rclone
+      # - ./data:/data
+      - ./logs:/logs

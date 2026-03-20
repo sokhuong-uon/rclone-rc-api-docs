@@ -3,110 +3,334 @@ info:
   title: Rclone RC API
   version: "1.40"
   description: >-
-    Comprehensive documentation for the Rclone Remote Control (RC) API. Rclone
-    RC provides an HTTP API to control rclone programmatically — manage remotes,
-    transfer files, sync directories, mount filesystems, and monitor jobs.
+    The Rclone RC (Remote Control) API lets you control rclone over HTTP.
+    You can manage cloud remotes, copy/sync files, mount filesystems, and
+    monitor transfers — all from your own code, scripts, or tools.
 
 
-    ## Getting Started
+    ## What can you do with it?
 
 
-    Start the rclone RC server:
+    - **Manage remotes** — create, update, delete cloud storage configs
+    (Google Drive, S3, SFTP, etc.)
+
+    - **Transfer files** — copy, move, sync, or delete files between any
+    two remotes (or local disk)
+
+    - **Mount remotes** — mount cloud storage as a local drive
+
+    - **Monitor progress** — track transfer speeds, check job status, view
+    errors
+
+    - **Run any rclone command** — execute CLI commands programmatically
+    via `core/command`
+
+
+    ---
+
+
+    ## Quick Start
+
+
+    ### 1. Start the rclone RC server
 
 
     ```bash
 
-    # Start with default settings (rclone rc on localhost:5572)
+    rclone rcd --rc-no-auth
 
-    rclone rcd --rc-no-auth --rc-allow-origin='https://rclone-rc-api.cloudnrain.com'
-
-    rclone rcd --rc-no-auth --rc-allow-origin='http://localhost:5173' # If you spin up this vite app
+    ```
 
 
-    # Start with authentication
+    This starts rclone listening on `http://localhost:5572`. The `--rc-no-auth`
+    flag disables authentication (fine for local development, but **never use
+    this in production**).
+
+
+    ### 2. Test the connection
+
+
+    ```bash
+
+    curl -X POST http://localhost:5572/rc/noop -d '{"hello":"world"}'
+
+    ```
+
+
+    You should get back: `{"hello":"world"}`. If you see this, the server
+    is running.
+
+
+    ### 3. Try a real command
+
+
+    ```bash
+
+    # List files in a local directory
+
+    curl -X POST http://localhost:5572/operations/list \
+      -H "Content-Type: application/json" \
+      -d '{"fs":"/tmp", "remote":""}'
+
+    ```
+
+
+    ### Common startup options
+
+
+    ```bash
+
+    # With authentication (recommended for anything non-local)
 
     rclone rcd --rc-user=admin --rc-pass=secret
 
 
-    # Start with custom address
+    # On a custom port
 
     rclone rcd --rc-addr=:8080 --rc-no-auth
 
 
-    # Start with web GUI
+    # With the web GUI
 
     rclone rcd --rc-web-gui --rc-no-auth
 
+
+    # Allow cross-origin requests (for browser-based apps)
+
+    rclone rcd --rc-no-auth --rc-allow-origin='http://localhost:5173'
+
+
+    # If you want to test requests from this live docs
+
+    rclone rcd --rc-no-auth --rc-allow-origin='https://rclone-rc-api.cloudnrain.com'
+
     ```
+
+
+    ---
 
 
     ## Authentication
 
 
-    By default, rclone requires authentication for methods that access remotes.
-    You can configure auth with:
+    Rclone protects endpoints that access remotes (file operations, config
+    changes, etc.) behind authentication by default. Endpoints marked with
+    a lock icon in this documentation require auth when it is enabled.
 
 
-    - `--rc-user` / `--rc-pass` — Basic HTTP authentication
-
-    - `--rc-htpasswd` — htpasswd file for authentication
-
-    - `--rc-no-auth` — Disable authentication (use only in trusted environments)
+    **Options:**
 
 
-    ## Special Parameters
+    | Flag | What it does |
+
+    |------|-------------|
+
+    | `--rc-user` / `--rc-pass` | Set a username and password (HTTP Basic
+    Auth) |
+
+    | `--rc-htpasswd` | Use an htpasswd file for multiple users |
+
+    | `--rc-no-auth` | Turn off auth entirely (local dev only!) |
 
 
-    All endpoints accept these special underscore-prefixed parameters:
+    When auth is enabled, pass credentials via HTTP Basic Auth:
+
+
+    ```bash
+
+    curl -u admin:secret -X POST http://localhost:5572/config/listremotes
+
+    ```
+
+
+    Without valid credentials, protected endpoints return **403 Forbidden**.
+
+
+    ---
+
+
+    ## How to send requests
+
+
+    Every endpoint uses **POST**. You can send parameters three ways:
+
+
+    **JSON body (recommended):**
+
+    ```bash
+
+    curl -X POST http://localhost:5572/operations/list \
+      -H "Content-Type: application/json" \
+      -d '{"fs":"/tmp", "remote":"", "opt":{"showHash":true}}'
+
+    ```
+
+
+    **URL query parameters:**
+
+    ```bash
+
+    curl -X POST 'http://localhost:5572/rc/noop?param1=one&param2=two'
+
+    ```
+
+
+    **Form data:**
+
+    ```bash
+
+    curl -X POST http://localhost:5572/rc/noop -d param1=one -d param2=two
+
+    ```
+
+
+    If you mix methods, JSON body wins, then form data, then query params.
+
+
+    ---
+
+
+    ## Specifying remotes
+
+
+    The `fs`, `srcFs`, and `dstFs` parameters identify which storage to
+    operate on. You can pass them as:
+
+
+    - **A remote path string:** `"drive:documents"`, `"s3:my-bucket/prefix"`,
+    `"/local/path"`
+
+    - **A JSON config object** (for on-the-fly remote configuration):
+
+
+    ```json
+
+    {"type": "s3", "provider": "AWS", "region": "us-east-1", "_root":
+    "/my-bucket"}
+
+    ```
+
+
+    Special keys in JSON config: `type` (backend type), `_name` (named
+    remote), `_root` (root path).
+
+
+    ---
+
+
+    ## Running long operations in the background
+
+
+    File transfers and syncs can take a long time. Add `"_async": true` to
+    run them in the background:
+
+
+    ```bash
+
+    # Start a copy in the background
+
+    curl -X POST http://localhost:5572/sync/copy \
+      -H "Content-Type: application/json" \
+      -d '{"srcFs":"drive:docs", "dstFs":"/backup/docs", "_async":true}'
+
+    # Response: {"jobid": 1, "executeId": "abc-123"}
+
+
+    # Check progress
+
+    curl -X POST http://localhost:5572/job/status \
+      -H "Content-Type: application/json" \
+      -d '{"jobid": 1}'
+
+    ```
+
+
+    Use `job/list` to see all jobs, and `job/stop` to cancel one.
+
+
+    ---
+
+
+    ## Special parameters
+
+
+    These underscore-prefixed parameters work on every endpoint:
 
 
     | Parameter | Type | Description |
 
     |-----------|------|-------------|
 
-    | `_async` | boolean | Run the command asynchronously. Returns a `jobid`
-    immediately. |
+    | `_async` | boolean | Run in the background. Returns `jobid` immediately
+    instead of waiting. |
 
-    | `_config` | object | Override global config flags for the duration of this
-    call. |
+    | `_group` | string | Group this call's stats under a custom name (default:
+    `job/{id}`). |
 
-    | `_filter` | object | Set file filters for the duration of this call. |
+    | `_config` | object | Override global rclone flags for this call only
+    (e.g. `{"CheckSum": true}`). |
 
-    | `_group` | string | Assign a stats group name for metrics tracking. |
-
-
-    ## Input Methods
-
-
-    All endpoints accept `POST` requests. Parameters can be sent as:
+    | `_filter` | object | Apply file filters for this call only (e.g.
+    `{"MaxSize": "100M", "IncludeRule": ["*.jpg"]}`). |
 
 
-    - **JSON body** (recommended): `Content-Type: application/json`
-
-    - **URL query parameters**: `?param=value`
-
-    - **Form data**: `Content-Type: application/x-www-form-urlencoded`
+    ---
 
 
-    JSON body takes precedence when multiple methods are used.
+    ## Error handling
 
 
-    ## Error Handling
-
-
-    Errors return a non-2xx HTTP status with a JSON body:
+    When something goes wrong, the API returns a non-2xx HTTP status code
+    with a JSON error body:
 
 
     ```json
 
     {
-      "error": "description of error",
-      "input": { "original": "parameters" },
-      "status": 500,
-      "path": "endpoint/path"
+      "error": "Didn't find key \"fs\" in input",
+      "input": {},
+      "status": 400,
+      "path": "operations/list"
     }
 
     ```
+
+
+    **Common error codes:**
+
+
+    | Code | Meaning | Common causes |
+
+    |------|---------|---------------|
+
+    | 400 | Bad Request | Missing required parameter, malformed JSON |
+
+    | 403 | Forbidden | Auth is enabled but credentials are missing or
+    wrong |
+
+    | 404 | Not Found | The endpoint doesn't exist |
+
+    | 500 | Internal Error | Invalid remote name, backend error, resource
+    not found |
+
+
+    ---
+
+
+    ## Data types
+
+
+    Some values have flexible types:
+
+
+    - **Duration** — returned as nanoseconds (integer), but you can set
+    them as strings like `"5s"`, `"1h30m"`
+
+    - **Size** — returned as bytes (integer), but you can set them as strings
+    like `"100M"`, `"1G"`
+
+    - **Enums** — returned as integers, but you can set them as strings
+    (e.g. `"full"` for VFS cache mode instead of `3`)
   contact:
     name: Rclone Community
     url: https://rclone.org
@@ -226,6 +450,34 @@ components:
         path:
           type: string
           example: operations/list
+    BadRequestResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          example: 'Didn''t find key "fs" in input'
+        input:
+          type: object
+        status:
+          type: integer
+          example: 400
+        path:
+          type: string
+          example: operations/list
+    ForbiddenResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          example: authentication must be set up on the rc server to use this method
+        input:
+          type: object
+        status:
+          type: integer
+          example: 403
+        path:
+          type: string
+          example: rc/noopauth
     AsyncResponse:
       type: object
       properties:
@@ -239,7 +491,7 @@ components:
       properties:
         version:
           type: string
-          example: v1.68.1
+          example: v1.73.2
         decomposed:
           type: array
           items:
@@ -265,13 +517,13 @@ components:
           example: arm64
         goVersion:
           type: string
-          example: go1.25.0
+          example: go1.26.1
         linking:
           type: string
           example: static
         goTags:
           type: string
-          example: "cmount webdav"
+          example: "none"
     BandwidthLimit:
       type: object
       properties:
@@ -370,6 +622,12 @@ components:
           type: object
         progress:
           type: object
+        executeId:
+          type: string
+          description: "Rclone instance ID. Changes after restart."
+        group:
+          type: string
+          description: "Stats group name for this job."
     TransferStats:
       type: object
       properties:
@@ -378,6 +636,8 @@ components:
         checks:
           type: integer
         deletes:
+          type: integer
+        deletedDirs:
           type: integer
         elapsedTime:
           type: number
@@ -556,6 +816,12 @@ paths:
             application/json:
               schema:
                 type: object
+        "403":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenResponse"
         "500":
           description: Error.
           content:
@@ -580,6 +846,26 @@ paths:
             application/json:
               schema:
                 type: object
+                properties:
+                  commands:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        Path:
+                          type: string
+                          example: "backend/command"
+                        Title:
+                          type: string
+                          example: "Runs a backend command."
+                        AuthRequired:
+                          type: boolean
+                        Help:
+                          type: string
+                        NeedsRequest:
+                          type: boolean
+                        NeedsResponse:
+                          type: boolean
       requestBody:
         content:
           application/json:
@@ -597,12 +883,17 @@ paths:
         application handles error responses from the RC API. The error returned
         is intentional and does not indicate a real problem.
       responses:
-        "200":
-          description: Success.
+        "500":
+          description: Always returns a 500 error for testing.
           content:
             application/json:
               schema:
-                type: object
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "arbitrary error on input map[]"
+                input: {}
+                path: "rc/error"
+                status: 500
       requestBody:
         content:
           application/json:
@@ -620,12 +911,17 @@ paths:
         handles fatal (unrecoverable) errors from the RC API. Unlike rc/error, a fatal
         error typically indicates a condition where the operation cannot be retried.
       responses:
-        "200":
-          description: Success.
+        "500":
+          description: Always returns a 500 fatal error for testing.
           content:
             application/json:
               schema:
-                type: object
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "panic received: fatal error on input map[]"
+                input: {}
+                path: "rc/fatal"
+                status: 500
       requestBody:
         content:
           application/json:
@@ -674,16 +970,16 @@ paths:
               schema:
                 $ref: "#/components/schemas/VersionInfo"
               example:
-                version: v1.68.1
+                version: v1.73.2
                 decomposed:
                   - 1
-                  - 68
-                  - 1
+                  - 73
+                  - 2
                 isGit: false
                 isBeta: false
                 os: linux
                 arch: amd64
-                goVersion: go1.22.5
+                goVersion: go1.26.1
       requestBody:
         content:
           application/json:
@@ -707,6 +1003,10 @@ paths:
             application/json:
               schema:
                 type: object
+                properties:
+                  pid:
+                    type: integer
+                    example: 1
               example:
                 pid: 12345
       requestBody:
@@ -732,6 +1032,25 @@ paths:
             application/json:
               schema:
                 type: object
+                description: "Go runtime memory statistics. See https://pkg.go.dev/runtime#MemStats for field details."
+                properties:
+                  Alloc:
+                    type: integer
+                    description: "Bytes of allocated heap objects."
+                  HeapAlloc:
+                    type: integer
+                    description: "Bytes of allocated heap objects (same as Alloc)."
+                  HeapSys:
+                    type: integer
+                    description: "Bytes of heap memory obtained from the OS."
+                  Sys:
+                    type: integer
+                    description: "Total bytes of memory obtained from the OS."
+                  TotalAlloc:
+                    type: integer
+                    description: "Cumulative bytes allocated for heap objects."
+                additionalProperties:
+                  type: integer
       requestBody:
         content:
           application/json:
@@ -755,6 +1074,7 @@ paths:
             application/json:
               schema:
                 type: object
+                description: "Empty response on success."
       requestBody:
         content:
           application/json:
@@ -787,6 +1107,19 @@ paths:
             application/json:
               schema:
                 type: object
+                properties:
+                  dir:
+                    type: string
+                    example: "/"
+                  info:
+                    type: object
+                    properties:
+                      Available:
+                        type: integer
+                      Free:
+                        type: integer
+                      Total:
+                        type: integer
               example:
                 dir: /
                 info:
@@ -875,6 +1208,7 @@ paths:
             application/json:
               schema:
                 type: object
+                description: "Empty response on success."
   /core/stats-delete:
     post:
       operationId: core_stats-delete
@@ -902,6 +1236,19 @@ paths:
             application/json:
               schema:
                 type: object
+                description: "Empty response on success."
+        "400":
+          description: Missing required parameter.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BadRequestResponse"
+        "500":
+          description: Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /core/transferred:
     post:
       operationId: core_transferred
@@ -941,6 +1288,14 @@ paths:
                           type: integer
                         error:
                           type: string
+                        checked:
+                          type: boolean
+                        what:
+                          type: string
+                        timestamp:
+                          type: integer
+                        jobid:
+                          type: integer
   /core/group-list:
     post:
       operationId: core_group-list
@@ -958,6 +1313,12 @@ paths:
             application/json:
               schema:
                 type: object
+                properties:
+                  groups:
+                    type: array
+                    nullable: true
+                    items:
+                      type: string
               example:
                 groups:
                   - job/1
@@ -995,6 +1356,7 @@ paths:
             application/json:
               schema:
                 type: object
+                description: "Empty response. Process begins shutdown."
   /core/obscure:
     post:
       operationId: core_obscure
@@ -1024,8 +1386,24 @@ paths:
             application/json:
               schema:
                 type: object
+                properties:
+                  obscured:
+                    type: string
+                    example: "U2FsdGVkX1..."
               example:
                 obscured: U2FsdGVkX1...
+        "400":
+          description: Missing required parameter.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BadRequestResponse"
+        "500":
+          description: Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /core/command:
     post:
       operationId: core_command
@@ -1072,6 +1450,27 @@ paths:
             application/json:
               schema:
                 type: object
+                properties:
+                  result:
+                    type: string
+                    description: "Command output. Only set when using returnType COMBINED_OUTPUT."
+                  error:
+                    type: boolean
+                    description: "True if the command exited with an error code."
+                  returnType:
+                    type: string
+        "400":
+          description: Missing required parameter.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BadRequestResponse"
+        "403":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenResponse"
         "500":
           description: Error.
           content:
@@ -1135,6 +1534,19 @@ paths:
             application/json:
               schema:
                 type: object
+                description: "Empty response on success."
+        "400":
+          description: Missing required parameter.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BadRequestResponse"
+        "403":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenResponse"
         "500":
           description: Error.
           content:
@@ -1175,6 +1587,19 @@ paths:
             application/json:
               schema:
                 type: object
+                description: "Empty response on success."
+        "400":
+          description: Missing required parameter.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BadRequestResponse"
+        "403":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenResponse"
         "500":
           description: Error.
           content:
@@ -1211,6 +1636,19 @@ paths:
             application/json:
               schema:
                 type: object
+                description: "Empty response on success."
+        "400":
+          description: Missing required parameter.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BadRequestResponse"
+        "403":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenResponse"
         "500":
           description: Error.
           content:
@@ -1247,10 +1685,24 @@ paths:
             application/json:
               schema:
                 type: object
+                additionalProperties:
+                  type: string
               example:
                 type: s3
                 provider: AWS
                 region: us-east-1
+        "400":
+          description: Missing required parameter.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BadRequestResponse"
+        "403":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenResponse"
         "500":
           description: Error.
           content:
@@ -1276,12 +1728,22 @@ paths:
             application/json:
               schema:
                 type: object
+                additionalProperties:
+                  type: object
+                  additionalProperties:
+                    type: string
               example:
                 my-s3:
                   type: s3
                   region: us-east-1
                 my-drive:
                   type: drive
+        "403":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenResponse"
         "500":
           description: Error.
           content:
@@ -1319,11 +1781,22 @@ paths:
             application/json:
               schema:
                 type: object
+                properties:
+                  remotes:
+                    type: array
+                    items:
+                      type: string
               example:
                 remotes:
                   - my-s3
                   - my-drive
                   - my-dropbox
+        "403":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenResponse"
         "500":
           description: Error.
           content:
@@ -1363,6 +1836,19 @@ paths:
             application/json:
               schema:
                 type: object
+                description: "Empty response on success."
+        "400":
+          description: Missing required parameter.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BadRequestResponse"
+        "403":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenResponse"
         "500":
           description: Error.
           content:
@@ -1422,6 +1908,25 @@ paths:
                           type: string
                         Prefix:
                           type: string
+                        Options:
+                          type: array
+                          items:
+                            type: object
+                        CommandHelp:
+                          type: array
+                          nullable: true
+                          items:
+                            type: object
+                        Aliases:
+                          type: array
+                          nullable: true
+                          items:
+                            type: string
+                        Hide:
+                          type: integer
+                        MetadataInfo:
+                          type: object
+                          nullable: true
       requestBody:
         content:
           application/json:
@@ -1459,6 +1964,19 @@ paths:
             application/json:
               schema:
                 type: object
+                description: "Empty response on success."
+        "400":
+          description: Missing required parameter.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BadRequestResponse"
+        "403":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenResponse"
         "500":
           description: Error.
           content:
@@ -1493,6 +2011,19 @@ paths:
             application/json:
               schema:
                 type: object
+                description: "Empty response on success."
+        "400":
+          description: Missing required parameter.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BadRequestResponse"
+        "500":
+          description: Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /operations/list:
     post:
       operationId: operations_list
@@ -1535,6 +2066,18 @@ paths:
                     type: array
                     items:
                       $ref: "#/components/schemas/ListItem"
+        "400":
+          description: Missing required parameter.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BadRequestResponse"
+        "403":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenResponse"
         "500":
           description: Error.
           content:
@@ -1578,6 +2121,23 @@ paths:
             application/json:
               schema:
                 type: object
+                properties:
+                  item:
+                    $ref: "#/components/schemas/ListItem"
+                    nullable: true
+                    description: "File or directory info, or null if not found."
+        "400":
+          description: Missing required parameter.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BadRequestResponse"
+        "403":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenResponse"
         "500":
           description: Error.
           content:
@@ -1624,6 +2184,18 @@ paths:
                     type: integer
                   trashed:
                     type: integer
+        "400":
+          description: Missing required parameter.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BadRequestResponse"
+        "403":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenResponse"
         "500":
           description: Error.
           content:
@@ -1664,6 +2236,19 @@ paths:
             application/json:
               schema:
                 type: object
+                description: "Empty response on success."
+        "400":
+          description: Missing required parameter.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BadRequestResponse"
+        "403":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenResponse"
         "500":
           description: Error.
           content:
@@ -1703,6 +2288,19 @@ paths:
             application/json:
               schema:
                 type: object
+                description: "Empty response on success."
+        "400":
+          description: Missing required parameter.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BadRequestResponse"
+        "403":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenResponse"
         "500":
           description: Error.
           content:
@@ -1745,6 +2343,19 @@ paths:
             application/json:
               schema:
                 type: object
+                description: "Empty response on success."
+        "400":
+          description: Missing required parameter.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BadRequestResponse"
+        "403":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenResponse"
         "500":
           description: Error.
           content:
@@ -1783,6 +2394,19 @@ paths:
             application/json:
               schema:
                 type: object
+                description: "Empty response on success."
+        "400":
+          description: Missing required parameter.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BadRequestResponse"
+        "403":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenResponse"
         "500":
           description: Error.
           content:
@@ -1832,6 +2456,19 @@ paths:
             application/json:
               schema:
                 type: object
+                description: "Empty response on success."
+        "400":
+          description: Missing required parameter.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BadRequestResponse"
+        "403":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenResponse"
         "500":
           description: Error.
           content:
@@ -1877,6 +2514,19 @@ paths:
             application/json:
               schema:
                 type: object
+                description: "Empty response on success."
+        "400":
+          description: Missing required parameter.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BadRequestResponse"
+        "403":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenResponse"
         "500":
           description: Error.
           content:
@@ -1923,6 +2573,19 @@ paths:
             application/json:
               schema:
                 type: object
+                description: "Empty response on success."
+        "400":
+          description: Missing required parameter.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BadRequestResponse"
+        "403":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenResponse"
         "500":
           description: Error.
           content:
@@ -1960,6 +2623,19 @@ paths:
             application/json:
               schema:
                 type: object
+                description: "Empty response on success."
+        "400":
+          description: Missing required parameter.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BadRequestResponse"
+        "403":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenResponse"
         "500":
           description: Error.
           content:
@@ -1999,6 +2675,19 @@ paths:
             application/json:
               schema:
                 type: object
+                description: "Empty response on success."
+        "400":
+          description: Missing required parameter.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BadRequestResponse"
+        "403":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenResponse"
         "500":
           description: Error.
           content:
@@ -2036,6 +2725,19 @@ paths:
             application/json:
               schema:
                 type: object
+                description: "Empty response on success."
+        "400":
+          description: Missing required parameter.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BadRequestResponse"
+        "403":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenResponse"
         "500":
           description: Error.
           content:
@@ -2073,6 +2775,46 @@ paths:
             application/json:
               schema:
                 type: object
+                properties:
+                  Features:
+                    type: object
+                    description: "Map of feature names to boolean availability."
+                    additionalProperties:
+                      type: boolean
+                  Hashes:
+                    type: array
+                    items:
+                      type: string
+                    example: ["md5", "sha1", "crc32", "sha256"]
+                  Name:
+                    type: string
+                    description: "Name of the remote as created."
+                    example: "local"
+                  Precision:
+                    type: integer
+                    description: "Precision of timestamps in nanoseconds."
+                  Root:
+                    type: string
+                    description: "Root path of the remote."
+                    example: "/"
+                  String:
+                    type: string
+                    description: "Human-readable description of the remote."
+                  MetadataInfo:
+                    type: object
+                    nullable: true
+        "400":
+          description: Missing required parameter.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BadRequestResponse"
+        "403":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenResponse"
         "500":
           description: Error.
           content:
@@ -2109,9 +2851,29 @@ paths:
             application/json:
               schema:
                 type: object
+                properties:
+                  count:
+                    type: integer
+                  bytes:
+                    type: integer
+                  sizeless:
+                    type: integer
+                    description: "Number of files with unknown size."
               example:
                 count: 42
                 bytes: 104857600
+        "400":
+          description: Missing required parameter.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BadRequestResponse"
+        "403":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenResponse"
         "500":
           description: Error.
           content:
@@ -2157,8 +2919,24 @@ paths:
             application/json:
               schema:
                 type: object
+                properties:
+                  url:
+                    type: string
+                    example: "https://drive.google.com/file/d/..."
               example:
                 url: https://drive.google.com/file/d/...
+        "400":
+          description: Missing required parameter.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BadRequestResponse"
+        "403":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenResponse"
         "500":
           description: Error.
           content:
@@ -2208,6 +2986,26 @@ paths:
             application/json:
               schema:
                 type: object
+                properties:
+                  hashType:
+                    type: string
+                    example: "md5"
+                  hashsum:
+                    type: array
+                    items:
+                      type: string
+        "400":
+          description: Missing required parameter.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BadRequestResponse"
+        "403":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenResponse"
         "500":
           description: Error.
           content:
@@ -2254,6 +3052,24 @@ paths:
             application/json:
               schema:
                 type: object
+                properties:
+                  hash:
+                    type: string
+                  hashType:
+                    type: string
+                    example: "md5"
+        "400":
+          description: Missing required parameter.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BadRequestResponse"
+        "403":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenResponse"
         "500":
           description: Error.
           content:
@@ -2310,6 +3126,50 @@ paths:
             application/json:
               schema:
                 type: object
+                properties:
+                  success:
+                    type: boolean
+                  status:
+                    type: string
+                    example: "OK"
+                  hashType:
+                    type: string
+                  combined:
+                    type: array
+                    items:
+                      type: string
+                  missingOnSrc:
+                    type: array
+                    items:
+                      type: string
+                  missingOnDst:
+                    type: array
+                    items:
+                      type: string
+                  match:
+                    type: array
+                    items:
+                      type: string
+                  differ:
+                    type: array
+                    items:
+                      type: string
+                  error:
+                    type: array
+                    items:
+                      type: string
+        "400":
+          description: Missing required parameter.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BadRequestResponse"
+        "403":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenResponse"
         "500":
           description: Error.
           content:
@@ -2346,6 +3206,19 @@ paths:
             application/json:
               schema:
                 type: object
+                description: "Empty response on success."
+        "400":
+          description: Missing required parameter.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BadRequestResponse"
+        "403":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenResponse"
         "500":
           description: Error.
           content:
@@ -2385,6 +3258,19 @@ paths:
             application/json:
               schema:
                 type: object
+                description: "Empty response on success."
+        "400":
+          description: Missing required parameter.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BadRequestResponse"
+        "403":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenResponse"
         "500":
           description: Error.
           content:
@@ -2428,6 +3314,25 @@ paths:
             application/json:
               schema:
                 type: object
+                description: "Empty response on success."
+        "400":
+          description: Missing required parameter.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BadRequestResponse"
+        "403":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenResponse"
+        "500":
+          description: Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /sync/copy:
     post:
       operationId: sync_copy
@@ -2473,6 +3378,19 @@ paths:
             application/json:
               schema:
                 type: object
+                description: "Empty response on success. When called with _async=true, returns jobid and executeId instead."
+        "400":
+          description: Missing required parameter.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BadRequestResponse"
+        "403":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenResponse"
         "500":
           description: Error.
           content:
@@ -2518,6 +3436,19 @@ paths:
             application/json:
               schema:
                 type: object
+                description: "Empty response on success. When called with _async=true, returns jobid and executeId instead."
+        "400":
+          description: Missing required parameter.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BadRequestResponse"
+        "403":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenResponse"
         "500":
           description: Error.
           content:
@@ -2564,6 +3495,19 @@ paths:
             application/json:
               schema:
                 type: object
+                description: "Empty response on success. When called with _async=true, returns jobid and executeId instead."
+        "400":
+          description: Missing required parameter.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BadRequestResponse"
+        "403":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenResponse"
         "500":
           description: Error.
           content:
@@ -2628,6 +3572,19 @@ paths:
             application/json:
               schema:
                 type: object
+                description: "Empty response on success. When called with _async=true, returns jobid and executeId instead."
+        "400":
+          description: Missing required parameter.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BadRequestResponse"
+        "403":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenResponse"
         "500":
           description: Error.
           content:
@@ -2687,6 +3644,19 @@ paths:
             application/json:
               schema:
                 type: object
+                description: "Empty response on success."
+        "400":
+          description: Missing required parameter.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BadRequestResponse"
+        "403":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenResponse"
         "500":
           description: Error.
           content:
@@ -2723,6 +3693,19 @@ paths:
             application/json:
               schema:
                 type: object
+                description: "Empty response on success."
+        "400":
+          description: Missing required parameter.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BadRequestResponse"
+        "403":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenResponse"
         "500":
           description: Error.
           content:
@@ -2748,6 +3731,13 @@ paths:
             application/json:
               schema:
                 type: object
+                description: "Empty response on success."
+        "403":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenResponse"
         "500":
           description: Error.
           content:
@@ -2814,6 +3804,11 @@ paths:
             application/json:
               schema:
                 type: object
+                properties:
+                  mountTypes:
+                    type: array
+                    items:
+                      type: string
               example:
                 mountTypes:
                   - mount
@@ -2859,6 +3854,13 @@ paths:
             application/json:
               schema:
                 type: object
+                description: "Empty response on success, or map of refreshed paths with result strings."
+        "403":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenResponse"
         "500":
           description: Error.
           content:
@@ -2897,6 +3899,13 @@ paths:
             application/json:
               schema:
                 type: object
+                description: "Empty response on success, or map of refreshed paths with result strings."
+        "403":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenResponse"
         "500":
           description: Error.
           content:
@@ -2995,6 +4004,7 @@ paths:
             application/json:
               schema:
                 type: object
+                description: "Empty response on success."
   /vfs/queue:
     post:
       operationId: vfs_queue
@@ -3034,6 +4044,12 @@ paths:
                       type: integer
                     uploading:
                       type: boolean
+                    expiry:
+                      type: number
+                      description: "Seconds until file is eligible for transfer."
+                    delay:
+                      type: number
+                      description: "Seconds between upload attempts."
   /vfs/queue-set-expiry:
     post:
       operationId: vfs_queue-set-expiry
@@ -3069,6 +4085,19 @@ paths:
             application/json:
               schema:
                 type: object
+                description: "Empty response on success."
+        "400":
+          description: Missing required parameter.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BadRequestResponse"
+        "500":
+          description: Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /job/list:
     post:
       operationId: job_list
@@ -3087,15 +4116,31 @@ paths:
             application/json:
               schema:
                 type: object
+                properties:
+                  executeId:
+                    type: string
+                    example: "d794c33c-463e-4acf-b911-f4b23e4f40b7"
+                  jobids:
+                    type: array
+                    items:
+                      type: integer
+                  runningIds:
+                    type: array
+                    items:
+                      type: integer
+                  finishedIds:
+                    type: array
+                    items:
+                      type: integer
               example:
-                executeId: abc123
+                executeId: "d794c33c-463e-4acf-b911-f4b23e4f40b7"
                 jobids:
                   - 1
                   - 2
                   - 3
-                running_ids:
+                runningIds:
                   - 3
-                finished_ids:
+                finishedIds:
                   - 1
                   - 2
       requestBody:
@@ -3138,6 +4183,18 @@ paths:
                 duration: 45.2
                 id: 1
                 success: true
+        "400":
+          description: Missing required parameter.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BadRequestResponse"
+        "500":
+          description: Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /job/stop:
     post:
       operationId: job_stop
@@ -3165,6 +4222,19 @@ paths:
             application/json:
               schema:
                 type: object
+                description: "Empty response on success."
+        "400":
+          description: Missing required parameter.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BadRequestResponse"
+        "500":
+          description: Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /job/stopgroup:
     post:
       operationId: job_stopgroup
@@ -3193,6 +4263,19 @@ paths:
             application/json:
               schema:
                 type: object
+                description: "Empty response on success."
+        "400":
+          description: Missing required parameter.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BadRequestResponse"
+        "500":
+          description: Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /job/batch:
     post:
       operationId: job_batch
@@ -3237,6 +4320,24 @@ paths:
             application/json:
               schema:
                 type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      type: object
+                      description: "Result from each command, or error object if command failed."
+        "400":
+          description: Missing required parameter.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BadRequestResponse"
+        "500":
+          description: Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /serve/start:
     post:
       operationId: serve_start
@@ -3292,6 +4393,18 @@ paths:
               example:
                 addr: "[::]:4321"
                 id: nfs-ecfc6852
+        "400":
+          description: Missing required parameter.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BadRequestResponse"
+        "403":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenResponse"
         "500":
           description: Error.
           content:
@@ -3326,6 +4439,19 @@ paths:
             application/json:
               schema:
                 type: object
+                description: "Empty response on success."
+        "400":
+          description: Missing required parameter.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BadRequestResponse"
+        "500":
+          description: Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /serve/stopall:
     post:
       operationId: serve_stopall
@@ -3343,6 +4469,7 @@ paths:
             application/json:
               schema:
                 type: object
+                description: "Empty response on success."
       requestBody:
         content:
           application/json:
@@ -3394,6 +4521,11 @@ paths:
             application/json:
               schema:
                 type: object
+                properties:
+                  types:
+                    type: array
+                    items:
+                      type: string
               example:
                 types:
                   - http
@@ -3436,6 +4568,9 @@ paths:
             application/json:
               schema:
                 type: object
+                description: "Map of option block names to their current values."
+                additionalProperties:
+                  type: object
   /options/set:
     post:
       operationId: options_set
@@ -3454,6 +4589,7 @@ paths:
             application/json:
               schema:
                 type: object
+                description: "Empty response on success."
       requestBody:
         content:
           application/json:
@@ -3486,6 +4622,22 @@ paths:
             application/json:
               schema:
                 type: object
+                description: "Map of option block names to arrays of option metadata objects."
+                additionalProperties:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      Name:
+                        type: string
+                      FieldName:
+                        type: string
+                      Help:
+                        type: string
+                      Default: {}
+                      Value: {}
+                      Type:
+                        type: string
   /options/blocks:
     post:
       operationId: options_blocks
@@ -3578,6 +4730,19 @@ paths:
             application/json:
               schema:
                 type: object
+                description: "Empty response on success."
+        "400":
+          description: Missing required parameter.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BadRequestResponse"
+        "403":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenResponse"
         "500":
           description: Error.
           content:
@@ -3615,6 +4780,13 @@ paths:
             application/json:
               schema:
                 type: object
+                description: "Empty response on success."
+        "403":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenResponse"
         "500":
           description: Error.
           content:
@@ -3689,6 +4861,10 @@ paths:
             application/json:
               schema:
                 type: object
+                properties:
+                  result:
+                    type: object
+                    description: "Result from the backend command."
               example:
                 result:
                   arg:
@@ -3696,6 +4872,12 @@ paths:
                   name: noop
                   opt:
                     echo: yes
+        "403":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForbiddenResponse"
         "500":
           description: Error.
           content:
@@ -3720,6 +4902,7 @@ paths:
             application/json:
               schema:
                 type: object
+                description: "Empty response on success."
       requestBody:
         content:
           application/json:
@@ -3743,6 +4926,9 @@ paths:
             application/json:
               schema:
                 type: object
+                properties:
+                  entries:
+                    type: integer
               example:
                 entries: 5
       requestBody:
@@ -3779,6 +4965,19 @@ paths:
             application/json:
               schema:
                 type: object
+                description: "Empty response on success."
+        "400":
+          description: Missing required parameter.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BadRequestResponse"
+        "500":
+          description: Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /pluginsctl/listPlugins:
     post:
       operationId: pluginsctl_listPlugins
@@ -3799,13 +4998,11 @@ paths:
                 type: object
                 properties:
                   loadedPlugins:
-                    type: array
-                    items:
-                      type: object
+                    type: object
+                    description: "Map of loaded production plugins."
                   testPlugins:
-                    type: array
-                    items:
-                      type: object
+                    type: object
+                    description: "Map of loaded test plugins."
       requestBody:
         content:
           application/json:
@@ -3845,6 +5042,11 @@ paths:
             application/json:
               schema:
                 type: object
+                properties:
+                  loadedPlugins:
+                    type: object
+                  testPlugins:
+                    type: object
   /pluginsctl/listTestPlugins:
     post:
       operationId: pluginsctl_listTestPlugins
@@ -3862,6 +5064,10 @@ paths:
             application/json:
               schema:
                 type: object
+                properties:
+                  loadedTestPlugins:
+                    type: object
+                    description: "Map of loaded test plugins."
       requestBody:
         content:
           application/json:
@@ -3896,6 +5102,19 @@ paths:
             application/json:
               schema:
                 type: object
+                description: "Empty response on success."
+        "400":
+          description: Missing required parameter.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BadRequestResponse"
+        "500":
+          description: Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /pluginsctl/removeTestPlugin:
     post:
       operationId: pluginsctl_removeTestPlugin
@@ -3923,6 +5142,19 @@ paths:
             application/json:
               schema:
                 type: object
+                description: "Empty response on success."
+        "400":
+          description: Missing required parameter.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BadRequestResponse"
+        "500":
+          description: Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /debug/set-block-profile-rate:
     post:
       operationId: debug_set-block-profile-rate
@@ -3951,6 +5183,19 @@ paths:
             application/json:
               schema:
                 type: object
+                description: "Empty response on success."
+        "400":
+          description: Missing required parameter.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BadRequestResponse"
+        "500":
+          description: Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /debug/set-gc-percent:
     post:
       operationId: debug_set-gc-percent
@@ -3979,6 +5224,19 @@ paths:
             application/json:
               schema:
                 type: object
+                description: "Empty response on success."
+        "400":
+          description: Missing required parameter.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BadRequestResponse"
+        "500":
+          description: Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /debug/set-mutex-profile-fraction:
     post:
       operationId: debug_set-mutex-profile-fraction
@@ -4007,8 +5265,23 @@ paths:
             application/json:
               schema:
                 type: object
+                properties:
+                  previousRate:
+                    type: integer
               example:
                 previousRate: 0
+        "400":
+          description: Missing required parameter.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BadRequestResponse"
+        "500":
+          description: Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /debug/set-soft-memory-limit:
     post:
       operationId: debug_set-soft-memory-limit
@@ -4039,3 +5312,16 @@ paths:
             application/json:
               schema:
                 type: object
+                description: "Empty response on success."
+        "400":
+          description: Missing required parameter.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BadRequestResponse"
+        "500":
+          description: Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
