@@ -349,7 +349,7 @@ servers:
       port:
         default: "5572"
   - url: https://{host}:{port}
-    description: Custom port
+    description: Custom domain and port
     variables:
       host:
         default: example.com
