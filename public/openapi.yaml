@@ -133,41 +133,78 @@ servers:
         default: "5572"
 tags:
   - name: RC
-    description: Remote control utility endpoints — echo, list commands, and testing.
+    description: >-
+      Utility endpoints for testing connectivity and discovering available commands.
+      Use these to verify your rclone RC server is reachable, test authentication,
+      and list all registered RC commands.
   - name: Core
-    description: Core system operations — version info, memory stats, bandwidth,
-      process control, transfer stats, and garbage collection.
+    description: >-
+      Core system operations for monitoring and controlling the rclone process itself.
+      Includes version info, memory stats, bandwidth limits, transfer statistics,
+      process control, and garbage collection.
   - name: Config
-    description: Manage rclone configuration — create, read, update, and delete remotes.
+    description: >-
+      Manage rclone remote configurations programmatically. Create, read, update, and
+      delete remotes, list available storage providers, and manage config file paths
+      and encryption.
   - name: Operations
-    description:
-      File and directory operations — list, copy, move, delete, mkdir,
-      stat, upload, and more.
+    description: >-
+      File and directory operations on remotes. List, copy, move, delete, create
+      directories, stat files, upload, calculate hashes, check integrity, and more.
+      These are the primary endpoints for interacting with files on your remotes.
   - name: Sync
-    description: Synchronization operations — copy, move, sync, and bisync between remotes.
+    description: >-
+      Synchronization operations for copying, moving, and syncing files between remotes.
+      Includes one-way sync, bidirectional sync (bisync), and bulk move operations.
+      These are typically long-running and best used with _async=true.
   - name: Mount
-    description: Mount and unmount remote filesystems locally via FUSE.
+    description: >-
+      Mount and unmount remote filesystems to local directories via FUSE. Once mounted,
+      remote files appear as local files and can be accessed by any application.
+      Requires FUSE support on the host system.
   - name: VFS
-    description: Virtual File System operations — refresh cache, manage upload
-      queues, and VFS stats.
+    description: >-
+      Virtual File System (VFS) operations for managing the caching layer used by
+      mounts and serves. Refresh directory caches, manage the upload queue, configure
+      poll intervals, and view VFS statistics.
   - name: Job
-    description: Async job management — list, monitor status, stop, and batch execute jobs.
+    description: >-
+      Manage asynchronous jobs created by passing _async=true to other endpoints.
+      List running and finished jobs, check job status and progress, stop jobs,
+      and execute batch commands.
   - name: Serve
-    description: Start and stop file serving protocols — HTTP, WebDAV, FTP, SFTP, NFS, etc.
+    description: >-
+      Start and stop file servers that expose remotes over various protocols including
+      HTTP, WebDAV, FTP, SFTP, NFS, DLNA, and S3. Useful for sharing files or
+      integrating with other tools that speak these protocols.
   - name: Options
-    description: Read and modify global rclone options at runtime.
+    description: >-
+      Read and modify global rclone options at runtime without restarting the process.
+      Useful for changing filters, transfer settings, or other configuration on the fly.
   - name: Cache
-    description: Cache backend operations — expire entries, fetch chunks, and view stats.
+    description: >-
+      Operations for the cache backend (cache remote type). Expire cached entries,
+      pre-fetch file chunks, and view cache statistics. Only relevant if you are
+      using a cache remote.
   - name: Backend
-    description: Execute backend-specific commands on remotes.
+    description: >-
+      Execute backend-specific commands that are unique to a particular remote type.
+      For example, Google Drive has commands for recovering files from trash, while
+      S3 has commands for managing object versions.
   - name: FsCache
-    description: Manage the filesystem object cache.
+    description: >-
+      Manage the internal filesystem object cache that rclone uses to avoid
+      re-creating filesystem objects. Clear the cache or check how many entries
+      it holds.
   - name: Plugins
-    description: Manage rclone web GUI plugins.
+    description: >-
+      Manage web GUI plugins for the rclone dashboard. Add, remove, and list plugins
+      that extend the rclone web interface with custom functionality.
   - name: Debug
-    description:
-      Debug and profiling endpoints — memory limits, profile rates, and
-      GC tuning.
+    description: >-
+      Advanced debugging and profiling endpoints for tuning Go runtime behavior.
+      Set memory limits, GC percentages, and profiling rates. Intended for
+      developers and advanced troubleshooting.
 components:
   securitySchemes:
     basicAuth:
@@ -415,7 +452,10 @@ paths:
       tags:
         - RC
       summary: Echo parameters (no auth)
-      description: Echoes back all input parameters. Useful for testing connectivity.
+      description: >-
+        Echoes back all input parameters exactly as received. Use this to verify
+        that your rclone RC server is running and reachable. Does not require
+        authentication, making it ideal as a connectivity health check.
       requestBody:
         content:
           application/json:
@@ -445,7 +485,10 @@ paths:
       tags:
         - RC
       summary: Echo parameters (requires auth)
-      description: Same as rc/noop but requires authentication.
+      description: >-
+        Echoes back all input parameters, but requires valid authentication
+        credentials. Use this to verify that both connectivity and authentication
+        are working correctly before making other authenticated API calls.
       security:
         - basicAuth: []
       requestBody:
@@ -475,9 +518,11 @@ paths:
       tags:
         - RC
       summary: List all available RC commands
-      description:
-        Returns a JSON object listing all registered RC commands with their
-        descriptions.
+      description: >-
+        Returns a JSON object listing all registered RC commands along with their
+        descriptions. Use this to discover which endpoints are available on your
+        rclone version, since available commands can vary depending on the build
+        and loaded backends.
       responses:
         "200":
           description: Success.
@@ -497,7 +542,10 @@ paths:
       tags:
         - RC
       summary: Return an error (testing)
-      description: Returns an error response. Used for testing error handling.
+      description: >-
+        Always returns a non-fatal error response. Use this to test how your
+        application handles error responses from the RC API. The error returned
+        is intentional and does not indicate a real problem.
       responses:
         "200":
           description: Success.
@@ -517,7 +565,10 @@ paths:
       tags:
         - RC
       summary: Return a fatal error (testing)
-      description: Returns a fatal error. Used for testing fatal error handling.
+      description: >-
+        Always returns a fatal error response. Use this to test how your application
+        handles fatal (unrecoverable) errors from the RC API. Unlike rc/error, a fatal
+        error typically indicates a condition where the operation cannot be retried.
       responses:
         "200":
           description: Success.
@@ -537,9 +588,10 @@ paths:
       tags:
         - RC
       summary: Trigger a panic (testing)
-      description:
-        "Panics the server. **Warning**: May crash the server if panic
-        recovery is not enabled."
+      description: >-
+        Deliberately triggers a Go panic in the server process. WARNING: This will
+        crash the rclone server if panic recovery is not enabled. Only use this for
+        testing your monitoring and restart mechanisms. Do not call this in production.
       responses:
         "200":
           description: Success.
@@ -559,9 +611,11 @@ paths:
       tags:
         - Core
       summary: Get rclone version info
-      description:
-        Returns detailed version information including OS, architecture,
-        and Go version.
+      description: >-
+        Returns detailed version information about the running rclone instance,
+        including the version string, OS, CPU architecture, and Go runtime version.
+        Useful for verifying compatibility or logging the rclone version in your
+        application.
       responses:
         "200":
           description: Success.
@@ -592,7 +646,10 @@ paths:
       tags:
         - Core
       summary: Get current process PID
-      description: Returns the PID of the running rclone process.
+      description: >-
+        Returns the process ID (PID) of the running rclone server. Useful for
+        process management, logging, or sending OS-level signals to the rclone
+        process from your application.
       responses:
         "200":
           description: Success.
@@ -614,9 +671,10 @@ paths:
       tags:
         - Core
       summary: Get Go memory statistics
-      description:
-        Returns Go runtime memory statistics including heap allocation and
-        GC stats.
+      description: >-
+        Returns detailed Go runtime memory statistics including heap allocation,
+        garbage collection stats, and system memory usage. Useful for diagnosing
+        memory issues or monitoring rclone resource consumption over time.
       responses:
         "200":
           description: Success.
@@ -636,7 +694,10 @@ paths:
       tags:
         - Core
       summary: Run garbage collection
-      description: Triggers Go runtime garbage collection.
+      description: >-
+        Manually triggers Go runtime garbage collection to free unused memory.
+        Normally Go handles this automatically, but you can call this after large
+        transfers complete to reclaim memory sooner.
       responses:
         "200":
           description: Success.
@@ -656,7 +717,10 @@ paths:
       tags:
         - Core
       summary: Get disk usage
-      description: Returns disk usage for a local directory.
+      description: >-
+        Returns disk usage information for a local directory, including total space,
+        free space, and available space in bytes. Only works with local filesystem
+        paths, not remote backends.
       requestBody:
         content:
           application/json:
@@ -685,9 +749,11 @@ paths:
       tags:
         - Core
       summary: Get or set bandwidth limit
-      description:
-        Query or set bandwidth limit. Supports separate upload/download
-        limits with `upload:download` syntax.
+      description: >-
+        Query or set the global bandwidth limit for all transfers. If called without
+        a rate parameter, returns the current limits. Supports separate upload and
+        download limits using the upload:download syntax (e.g., "1M:500k"). Use
+        "off" to remove limits entirely.
       requestBody:
         content:
           application/json:
@@ -711,7 +777,11 @@ paths:
       tags:
         - Core
       summary: Get transfer statistics
-      description: Returns comprehensive transfer statistics.
+      description: >-
+        Returns comprehensive transfer statistics including speed, bytes transferred,
+        error counts, and details of files currently being transferred. Optionally filter
+        by stats group name, or use the short flag to return a condensed response.
+        Poll this endpoint periodically to build a progress indicator.
       requestBody:
         content:
           application/json:
@@ -736,7 +806,10 @@ paths:
       tags:
         - Core
       summary: Reset transfer statistics
-      description: Resets transfer statistics counters.
+      description: >-
+        Resets transfer statistics counters back to zero. Optionally specify a group
+        name to reset only that group. Useful for getting clean stats before starting
+        a new batch of transfers.
       requestBody:
         content:
           application/json:
@@ -758,7 +831,10 @@ paths:
       tags:
         - Core
       summary: Delete a stats group
-      description: Deletes a specific stats group.
+      description: >-
+        Permanently deletes a specific stats group and all its accumulated statistics.
+        Each async job creates its own stats group (e.g., "job/1"), so use this to
+        clean up stats from completed jobs you no longer need to track.
       requestBody:
         content:
           application/json:
@@ -782,7 +858,10 @@ paths:
       tags:
         - Core
       summary: Get completed transfers
-      description: Returns list of completed transfers (up to 100).
+      description: >-
+        Returns a list of recently completed file transfers, including file names,
+        sizes, bytes transferred, and any errors. Rclone keeps up to the last 100
+        completed transfers. Optionally filter by stats group name.
       requestBody:
         content:
           application/json:
@@ -818,7 +897,10 @@ paths:
       tags:
         - Core
       summary: List stats groups
-      description: Returns all stats group names.
+      description: >-
+        Returns the names of all active stats groups. Stats groups are created
+        automatically for async jobs (named "job/1", "job/2", etc.). Use these
+        names with core/stats to get per-job transfer statistics.
       responses:
         "200":
           description: Success.
@@ -842,7 +924,11 @@ paths:
       tags:
         - Core
       summary: Quit rclone
-      description: Gracefully terminates the rclone process.
+      description: >-
+        Gracefully shuts down the rclone process. Any active transfers will be
+        cancelled. You can optionally specify an exit code. This is a destructive
+        operation that will stop the RC server and all active mounts, serves,
+        and transfers.
       requestBody:
         content:
           application/json:
@@ -865,7 +951,11 @@ paths:
       tags:
         - Core
       summary: Obscure a password
-      description: Obscures a plaintext password using rclone's algorithm.
+      description: >-
+        Obscures a plaintext password using rclone's built-in obscure algorithm.
+        Many rclone remote configurations store passwords in obscured form. Use
+        this before passing passwords to config/create or config/update. Note that
+        obscuring is not encryption — it only prevents casual reading of passwords.
       requestBody:
         content:
           application/json:
@@ -892,7 +982,11 @@ paths:
       tags:
         - Core
       summary: Execute an rclone command
-      description: Execute any rclone command via the RC API.
+      description: >-
+        Executes any rclone CLI command through the RC API, as if you ran it on
+        the command line. Requires authentication. Use the returnType parameter to
+        control whether output is returned as a combined string or streamed.
+        This is a powerful escape hatch for commands not covered by other endpoints.
       security:
         - basicAuth: []
       requestBody:
@@ -940,7 +1034,11 @@ paths:
       tags:
         - Config
       summary: Create a new remote
-      description: Creates a new remote configuration.
+      description: >-
+        Creates a new remote configuration with the given name and type. Pass
+        provider-specific parameters (like access keys, regions, or bucket names)
+        in the parameters object. Set opt.nonInteractive to true when calling via
+        the API to avoid prompts. If the remote name already exists, this will fail.
       security:
         - basicAuth: []
       requestBody:
@@ -999,7 +1097,11 @@ paths:
       tags:
         - Config
       summary: Update an existing remote
-      description: Updates an existing remote configuration.
+      description: >-
+        Updates the configuration of an existing remote. Only the parameters you
+        specify will be changed; other settings remain untouched. The remote must
+        already exist or the call will fail. Use config/get first to see the
+        current configuration if needed.
       security:
         - basicAuth: []
       requestBody:
@@ -1035,7 +1137,10 @@ paths:
       tags:
         - Config
       summary: Delete a remote
-      description: Deletes a remote by name.
+      description: >-
+        Permanently deletes a remote configuration by name. This only removes
+        the remote from rclone's config file — it does not delete any files stored
+        on the remote itself. This action cannot be undone.
       security:
         - basicAuth: []
       requestBody:
@@ -1068,7 +1173,10 @@ paths:
       tags:
         - Config
       summary: Get a remote's config
-      description: Returns configuration for a specific remote.
+      description: >-
+        Returns the full configuration for a specific remote, including its type
+        and all provider-specific parameters. Note that password fields are returned
+        in obscured form. Returns an error if the remote does not exist.
       security:
         - basicAuth: []
       requestBody:
@@ -1105,7 +1213,10 @@ paths:
       tags:
         - Config
       summary: Dump all remote configs
-      description: Returns full configuration for all remotes.
+      description: >-
+        Returns the complete configuration for every remote in one response.
+        Useful for backing up your rclone config or building a UI that shows
+        all configured remotes. Password fields are returned in obscured form.
       security:
         - basicAuth: []
       responses:
@@ -1139,7 +1250,10 @@ paths:
       tags:
         - Config
       summary: List all remote names
-      description: Returns array of configured remote names.
+      description: >-
+        Returns an array containing just the names of all configured remotes,
+        without their configuration details. Use this for a quick overview of
+        available remotes, then call config/get for details on a specific one.
       security:
         - basicAuth: []
       requestBody:
@@ -1172,7 +1286,11 @@ paths:
       tags:
         - Config
       summary: Set password parameters
-      description: Sets password parameters for a remote (auto-obscured).
+      description: >-
+        Sets password-type parameters on a remote. The passwords you provide are
+        automatically obscured before being stored, so you should pass them in
+        plaintext. Use this instead of config/update when setting password fields
+        to avoid double-obscuring.
       security:
         - basicAuth: []
       requestBody:
@@ -1207,7 +1325,10 @@ paths:
       tags:
         - Config
       summary: Get config file paths
-      description: Returns paths to config file, cache, and temp directories.
+      description: >-
+        Returns the filesystem paths that rclone uses for its configuration file,
+        cache directory, and temporary files directory. Useful for locating the
+        config file or understanding where rclone stores cached data on disk.
       responses:
         "200":
           description: Success.
@@ -1227,7 +1348,11 @@ paths:
       tags:
         - Config
       summary: List available providers
-      description: Returns all available storage providers with config options.
+      description: >-
+        Returns a list of all storage providers (backends) that this rclone build
+        supports, along with their configuration options and descriptions. Use this
+        to dynamically build a remote creation form or to check which providers
+        are available.
       responses:
         "200":
           description: Success.
@@ -1259,7 +1384,11 @@ paths:
       tags:
         - Config
       summary: Set config file path
-      description: Changes the rclone config file path.
+      description: >-
+        Changes which configuration file rclone uses. After calling this, all
+        subsequent config operations will read from and write to the new path.
+        The file at the new path must be a valid rclone config file or be empty
+        for a fresh start.
       security:
         - basicAuth: []
       requestBody:
@@ -1292,7 +1421,11 @@ paths:
       tags:
         - Config
       summary: Unlock encrypted config
-      description: Unlocks an encrypted configuration file.
+      description: >-
+        Unlocks an encrypted rclone configuration file by providing the config
+        password. If your config file is encrypted (set up via rclone config),
+        you must call this before any config operations will work. The password
+        is held in memory for the duration of the rclone session.
       requestBody:
         content:
           application/json:
@@ -1316,9 +1449,12 @@ paths:
       tags:
         - Operations
       summary: List files and directories
-      description:
-        Lists files and directories in a remote path. Supports recursion,
-        hashes, metadata, and filtering.
+      description: >-
+        Lists files and directories at a given path on a remote. This is one of the
+        most commonly used endpoints for browsing remote storage. Use the opt parameter
+        to control recursion, include file hashes, filter for files or directories only,
+        and retrieve metadata. The fs parameter specifies the remote (e.g., "drive:"),
+        and remote specifies the path within it.
       security:
         - basicAuth: []
       requestBody:
@@ -1361,7 +1497,11 @@ paths:
       tags:
         - Operations
       summary: Get file/directory info
-      description: Returns info about a single file or directory. Returns null if not found.
+      description: >-
+        Returns metadata about a single file or directory, including name, size,
+        modification time, and MIME type. Returns null for the item field if the
+        path does not exist, rather than returning an error. Use this to check
+        whether a specific file exists before attempting to download or modify it.
       security:
         - basicAuth: []
       requestBody:
@@ -1400,7 +1540,11 @@ paths:
       tags:
         - Operations
       summary: Get remote storage info
-      description: Returns storage space information (total, used, free, trashed).
+      description: >-
+        Returns storage space information for a remote, including total capacity,
+        used space, free space, and space consumed by trashed items (in bytes).
+        Not all backends support every field — unsupported values may be absent
+        from the response. Useful for monitoring storage quotas.
       security:
         - basicAuth: []
       requestBody:
@@ -1442,7 +1586,10 @@ paths:
       tags:
         - Operations
       summary: Create a directory
-      description: Creates a directory at the specified path.
+      description: >-
+        Creates a directory at the specified path on the remote. Parent directories
+        are created automatically if they do not exist. If the directory already
+        exists, this operation succeeds without error.
       security:
         - basicAuth: []
       requestBody:
@@ -1479,7 +1626,11 @@ paths:
       tags:
         - Operations
       summary: Remove an empty directory
-      description: Removes an empty directory. Fails if not empty.
+      description: >-
+        Removes a single empty directory. This will fail with an error if the
+        directory contains any files or subdirectories. Use operations/purge
+        instead if you need to remove a directory and all its contents, or
+        operations/rmdirs to clean up empty directories recursively.
       security:
         - basicAuth: []
       requestBody:
@@ -1514,7 +1665,11 @@ paths:
       tags:
         - Operations
       summary: Remove empty directories recursively
-      description: Removes empty directories under a path.
+      description: >-
+        Recursively removes all empty directories under the specified path. Useful
+        for cleaning up leftover empty folders after deleting or moving files. Set
+        leaveRoot to true to keep the top-level directory itself while removing
+        empty subdirectories beneath it.
       security:
         - basicAuth: []
       requestBody:
@@ -1552,7 +1707,11 @@ paths:
       tags:
         - Operations
       summary: Remove directory and all contents
-      description: Recursively removes a directory and contents. **Destructive.**
+      description: >-
+        Recursively deletes a directory and all of its contents, including files
+        and subdirectories. WARNING: This is a destructive operation that cannot
+        be undone (unless the backend supports a trash/recycle bin). Double-check
+        the path before calling this endpoint.
       security:
         - basicAuth: []
       requestBody:
@@ -1586,7 +1745,11 @@ paths:
       tags:
         - Operations
       summary: Copy a single file
-      description: Copies a file between remotes.
+      description: >-
+        Copies a single file from one location to another, which can be on the
+        same remote or across different remotes. The source file is not modified.
+        If the destination file already exists, it will be overwritten. For copying
+        entire directories, use sync/copy instead.
       security:
         - basicAuth: []
       requestBody:
@@ -1631,7 +1794,11 @@ paths:
       tags:
         - Operations
       summary: Move a single file
-      description: Moves a file between remotes. Source deleted after copy.
+      description: >-
+        Moves a single file from one location to another by copying it to the
+        destination and then deleting the source. Works across different remotes.
+        If the destination file already exists, it will be overwritten. The source
+        file is only deleted after a successful copy.
       security:
         - basicAuth: []
       requestBody:
@@ -1672,7 +1839,11 @@ paths:
       tags:
         - Operations
       summary: Copy a URL to a remote
-      description: Downloads from URL and saves to remote.
+      description: >-
+        Downloads a file from a public URL and saves it directly to a remote,
+        without needing to download it locally first. Set autoFilename to true
+        to automatically use the filename from the URL or Content-Disposition
+        header. Useful for saving web resources directly to cloud storage.
       security:
         - basicAuth: []
       requestBody:
@@ -1714,7 +1885,11 @@ paths:
       tags:
         - Operations
       summary: Delete files in a remote
-      description: Removes all files in path (not directories). **Destructive.**
+      description: >-
+        Removes all files within the specified path, but leaves the directory
+        structure intact. WARNING: This is a destructive operation that permanently
+        deletes files. To remove directories as well, use operations/purge. To
+        delete a single specific file, use operations/deletefile instead.
       security:
         - basicAuth: []
       requestBody:
@@ -1747,7 +1922,11 @@ paths:
       tags:
         - Operations
       summary: Delete a single file
-      description: Deletes a single file.
+      description: >-
+        Deletes a single specific file from a remote. Returns an error if the file
+        does not exist. This is the safest way to delete files since it targets
+        exactly one file, unlike operations/delete which removes all files in
+        a path.
       security:
         - basicAuth: []
       requestBody:
@@ -1782,7 +1961,11 @@ paths:
       tags:
         - Operations
       summary: Clean up remote trash
-      description: Cleans up trash/old versions (if backend supports it).
+      description: >-
+        Permanently removes trashed files and old versions from a remote, if the
+        backend supports it (e.g., Google Drive trash, S3 versioned objects). This
+        frees up storage space that trashed items were consuming. Not all backends
+        support this operation — check operations/fsinfo to see if cleanup is available.
       security:
         - basicAuth: []
       requestBody:
@@ -1815,7 +1998,11 @@ paths:
       tags:
         - Operations
       summary: Get remote filesystem info
-      description: Returns features, hashes, and metadata capabilities.
+      description: >-
+        Returns detailed information about a remote's capabilities, including
+        supported features, available hash types, and metadata support. Use this
+        to programmatically check what operations a remote supports before
+        attempting them.
       security:
         - basicAuth: []
       requestBody:
@@ -1848,7 +2035,10 @@ paths:
       tags:
         - Operations
       summary: Get total size of a remote
-      description: Returns total file count and bytes.
+      description: >-
+        Calculates the total number of files and total size in bytes for a remote
+        path. This may take a while for large directories as it needs to walk the
+        entire directory tree. Consider using _async=true for large remotes.
       security:
         - basicAuth: []
       requestBody:
@@ -1884,7 +2074,11 @@ paths:
       tags:
         - Operations
       summary: Create a public link
-      description: Creates public link to file/directory.
+      description: >-
+        Creates a publicly shareable link to a file or directory on the remote.
+        Only works with backends that support public links (e.g., Google Drive,
+        Dropbox). Set unlink to true to remove an existing public link. Optionally
+        set an expiry duration for time-limited sharing.
       security:
         - basicAuth: []
       requestBody:
@@ -1927,7 +2121,11 @@ paths:
       tags:
         - Operations
       summary: Calculate hash sums
-      description: Produces hashsum for all files in path.
+      description: >-
+        Calculates hash checksums for all files in the specified path. Supported
+        hash types depend on the backend (e.g., MD5, SHA-1, SHA-256). Set download
+        to true to hash by downloading file content when the backend does not
+        natively provide hashes. Use base64 for base64-encoded output.
       security:
         - basicAuth: []
       requestBody:
@@ -1972,7 +2170,11 @@ paths:
       tags:
         - Operations
       summary: Calculate hash for a file
-      description: Returns hash of a single file.
+      description: >-
+        Calculates the hash checksum for a single file. Faster than operations/hashsum
+        when you only need to verify one file. Set download to true if the backend
+        does not natively provide hashes and you want rclone to download the file
+        content to compute the hash locally.
       security:
         - basicAuth: []
       requestBody:
@@ -2014,7 +2216,12 @@ paths:
       tags:
         - Operations
       summary: Check files between remotes
-      description: Checks for differences between source and destination.
+      description: >-
+        Compares files between a source and destination remote to find differences.
+        Reports files that are missing on either side, files that differ, and files
+        that match. Use the boolean flags to control which categories are included
+        in the output. Set oneWay to true to only check source against destination.
+        Useful for verifying backup integrity.
       security:
         - basicAuth: []
       requestBody:
@@ -2065,7 +2272,11 @@ paths:
       tags:
         - Operations
       summary: Set storage tier for remote
-      description: Changes storage tier for all files.
+      description: >-
+        Changes the storage tier (storage class) for all files in the specified
+        remote path. Only supported by backends that offer storage tiers, such
+        as S3 (Standard, Glacier, etc.) or Azure Blob (Hot, Cool, Archive).
+        This can affect access times and storage costs.
       security:
         - basicAuth: []
       requestBody:
@@ -2097,7 +2308,11 @@ paths:
       tags:
         - Operations
       summary: Set storage tier for a file
-      description: Changes storage tier for one file.
+      description: >-
+        Changes the storage tier (storage class) for a single file. Use this
+        for targeted tier changes on individual files instead of changing the
+        tier for an entire directory. Only supported by backends that offer
+        storage tiers (e.g., S3, Azure Blob).
       security:
         - basicAuth: []
       requestBody:
@@ -2132,7 +2347,11 @@ paths:
       tags:
         - Operations
       summary: Upload a file
-      description: Uploads a file via multipart form data.
+      description: >-
+        Uploads a file to a remote using multipart form data. This is the only
+        endpoint that accepts multipart/form-data instead of JSON. The file is
+        uploaded directly to the specified remote path. For uploading multiple
+        files or entire directories, use sync/copy instead.
       security:
         - basicAuth: []
       requestBody:
@@ -2165,9 +2384,11 @@ paths:
       tags:
         - Sync
       summary: Copy files between remotes
-      description:
-        Copies files from source to destination, skipping existing. Use
-        with `_async=true` for large transfers.
+      description: >-
+        Copies all files from the source remote to the destination remote, skipping
+        files that already exist and are unchanged at the destination. Does not delete
+        any files on the destination. This is typically a long-running operation, so
+        use _async=true and monitor progress via job/status and core/stats.
       security:
         - basicAuth: []
       requestBody:
@@ -2214,7 +2435,11 @@ paths:
       tags:
         - Sync
       summary: Move files between remotes
-      description: Moves files from source to destination. Source deleted after copy.
+      description: >-
+        Moves all files from the source remote to the destination remote. Files are
+        copied to the destination and then deleted from the source. Source files are
+        only deleted after successful transfer. Use _async=true for large transfers
+        and set deleteEmptySrcDirs to also remove empty source directories afterward.
       security:
         - basicAuth: []
       requestBody:
@@ -2255,8 +2480,12 @@ paths:
       tags:
         - Sync
       summary: Sync destination to match source
-      description: Makes destination match source, **deleting extra files on
-        destination**. Use `_async=true`.
+      description: >-
+        Makes the destination an exact mirror of the source by copying new and
+        changed files, and deleting files on the destination that do not exist on
+        the source. WARNING: This is destructive — extra files on the destination
+        will be permanently deleted. Use _async=true for large syncs and consider
+        a dry run first via core/command.
       security:
         - basicAuth: []
       requestBody:
@@ -2297,7 +2526,13 @@ paths:
       tags:
         - Sync
       summary: Bidirectional sync
-      description: Bidirectional sync — changes on either side propagated to the other.
+      description: >-
+        Performs bidirectional synchronization between two paths, propagating changes
+        made on either side to the other. On first run, use resync=true to establish
+        a baseline. The maxDelete parameter (default 50%) prevents accidental mass
+        deletions — set force=true to override this safety limit. Use checkAccess
+        to verify both sides are accessible before syncing. Bisync is more complex
+        than one-way sync and requires careful configuration.
       security:
         - basicAuth: []
       requestBody:
@@ -2355,7 +2590,12 @@ paths:
       tags:
         - Mount
       summary: Mount a remote
-      description: Mounts a remote filesystem to a local mount point via FUSE.
+      description: >-
+        Mounts a remote filesystem to a local directory via FUSE, making remote
+        files accessible as if they were local. The mount point directory must
+        already exist and be empty. Configure VFS cache settings via vfsOpt for
+        better performance with applications that need random access. Requires
+        FUSE to be installed on the host system.
       security:
         - basicAuth: []
       requestBody:
@@ -2409,7 +2649,10 @@ paths:
       tags:
         - Mount
       summary: Unmount a mount point
-      description: Unmounts a previously mounted filesystem.
+      description: >-
+        Unmounts a previously mounted remote filesystem by its mount point path.
+        Any pending VFS cache uploads will be flushed before unmounting. If
+        processes are actively using the mount point, the unmount may fail.
       security:
         - basicAuth: []
       requestBody:
@@ -2442,7 +2685,10 @@ paths:
       tags:
         - Mount
       summary: Unmount all mount points
-      description: Unmounts all currently mounted filesystems.
+      description: >-
+        Unmounts all currently mounted remote filesystems at once. Useful for
+        cleanup before shutting down the rclone server. All pending VFS cache
+        uploads will be flushed before unmounting each mount point.
       security:
         - basicAuth: []
       responses:
@@ -2470,7 +2716,10 @@ paths:
       tags:
         - Mount
       summary: List active mounts
-      description: Returns all currently active mount points.
+      description: >-
+        Returns a list of all currently active mount points, including which remote
+        is mounted where and when each mount was created. Use this to check the
+        status of your mounts or find the mount point path needed for unmounting.
       responses:
         "200":
           description: Success.
@@ -2503,7 +2752,11 @@ paths:
       tags:
         - Mount
       summary: List mount types
-      description: Returns available mount types.
+      description: >-
+        Returns the list of mount implementation types available on this system
+        (e.g., mount, cmount, mount2). Available types depend on the OS and how
+        rclone was built. Use this to check which mount types you can pass to
+        mount/mount.
       responses:
         "200":
           description: Success.
@@ -2528,7 +2781,12 @@ paths:
       tags:
         - VFS
       summary: Refresh VFS directory cache
-      description: Refreshes VFS directory cache.
+      description: >-
+        Refreshes the VFS directory listing cache, forcing rclone to re-read
+        directory contents from the remote. Use this when files have been added or
+        changed externally (outside of rclone) and you need the mounted filesystem
+        to reflect those changes immediately. Set recursive to true to refresh
+        all subdirectories as well.
       security:
         - basicAuth: []
       requestBody:
@@ -2563,7 +2821,11 @@ paths:
       tags:
         - VFS
       summary: Forget VFS cache entries
-      description: Removes files/dirs from VFS cache.
+      description: >-
+        Removes specific files or directories from the VFS cache, forcing them
+        to be re-fetched from the remote on next access. Use this to free up local
+        disk space used by cached files, or to force a re-download of a file that
+        may have changed on the remote.
       security:
         - basicAuth: []
       requestBody:
@@ -2597,7 +2859,10 @@ paths:
       tags:
         - VFS
       summary: List active VFS instances
-      description: Returns all active VFS instances.
+      description: >-
+        Returns a list of all active VFS instances. Each mount or serve operation
+        creates its own VFS instance. Use the returned identifiers with other
+        vfs/* endpoints to target a specific VFS instance.
       responses:
         "200":
           description: Success.
@@ -2622,7 +2887,10 @@ paths:
       tags:
         - VFS
       summary: Get VFS statistics
-      description: Returns VFS stats including disk cache and metadata cache.
+      description: >-
+        Returns statistics for a VFS instance, including disk cache usage, metadata
+        cache state, and the current VFS options in effect. Useful for monitoring
+        cache disk space consumption and diagnosing caching behavior.
       requestBody:
         content:
           application/json:
@@ -2651,7 +2919,11 @@ paths:
       tags:
         - VFS
       summary: Set VFS poll interval
-      description: Gets or sets poll interval for change detection.
+      description: >-
+        Gets or sets the poll interval that controls how frequently rclone checks
+        the remote for changes. A shorter interval means faster detection of
+        external changes but increases API calls to the remote. If called without
+        parameters, returns the current interval.
       requestBody:
         content:
           application/json:
@@ -2679,7 +2951,11 @@ paths:
       tags:
         - VFS
       summary: Get VFS upload queue
-      description: Returns pending uploads.
+      description: >-
+        Returns the list of files waiting to be uploaded to the remote from the
+        VFS write-back cache. Each item shows the file name, size, number of
+        retry attempts, and whether it is currently uploading. Useful for monitoring
+        pending writes when using VFS cache in writes or full mode.
       requestBody:
         content:
           application/json:
@@ -2714,7 +2990,11 @@ paths:
       tags:
         - VFS
       summary: Set expiry for queued upload
-      description: Sets expiry time for a queue item.
+      description: >-
+        Sets or changes the expiry time for a file in the VFS upload queue. Use
+        this to prioritize or delay specific uploads. The expiry value is a Unix
+        timestamp, or set relative to true to interpret the value as seconds from
+        now. The item ID can be found via vfs/queue.
       requestBody:
         content:
           application/json:
@@ -2745,7 +3025,11 @@ paths:
       tags:
         - Job
       summary: List all jobs
-      description: Returns all async jobs.
+      description: >-
+        Returns a list of all async jobs, including their IDs, which are still
+        running, and which have finished. Jobs are created when you pass _async=true
+        to any endpoint. Use the returned job IDs with job/status to check progress
+        or job/stop to cancel a running job.
       responses:
         "200":
           description: Success.
@@ -2776,7 +3060,11 @@ paths:
       tags:
         - Job
       summary: Get job status
-      description: Returns current status of an async job.
+      description: >-
+        Returns the current status of an async job, including whether it has
+        finished, how long it has been running, and whether it succeeded or
+        encountered errors. Poll this endpoint periodically to track the progress
+        of long-running operations like sync or copy.
       requestBody:
         content:
           application/json:
@@ -2806,7 +3094,10 @@ paths:
       tags:
         - Job
       summary: Stop a running job
-      description: Stops an async job by ID.
+      description: >-
+        Cancels a running async job by its ID. The job will be stopped as soon as
+        possible, but files already in the process of transferring may complete
+        first. Use job/list to find the ID of the job you want to stop.
       requestBody:
         content:
           application/json:
@@ -2830,7 +3121,11 @@ paths:
       tags:
         - Job
       summary: Stop all jobs in a group
-      description: Stops all jobs in a stats group.
+      description: >-
+        Cancels all running async jobs that belong to a specific stats group.
+        Stats groups are named like "job/1", "job/2", etc. Use core/group-list
+        to see available group names. Useful for cancelling a batch of related
+        operations at once.
       requestBody:
         content:
           application/json:
@@ -2854,7 +3149,11 @@ paths:
       tags:
         - Job
       summary: Execute batch commands
-      description: Executes multiple RC commands in one request.
+      description: >-
+        Executes multiple RC commands in a single HTTP request. Each input item
+        specifies a _path (the RC endpoint) and any parameters for that call.
+        Use the concurrency parameter to control how many commands run in parallel.
+        This reduces network round trips when you need to call several endpoints.
       requestBody:
         content:
           application/json:
@@ -2894,7 +3193,11 @@ paths:
       tags:
         - Serve
       summary: Start a file server
-      description: Starts a file serving protocol (HTTP, WebDAV, FTP, SFTP, NFS, etc.).
+      description: >-
+        Starts a file server that exposes a remote over a specified protocol (HTTP,
+        WebDAV, FTP, SFTP, NFS, DLNA, or S3). The server runs in the background
+        and is assigned a unique ID that you can use with serve/stop to shut it down.
+        Set the addr parameter to control which address and port the server listens on.
       security:
         - basicAuth: []
       requestBody:
@@ -2951,7 +3254,10 @@ paths:
       tags:
         - Serve
       summary: Stop a file server
-      description: Stops a running server by ID.
+      description: >-
+        Stops a running file server by its unique ID (returned by serve/start or
+        visible in serve/list). The server will stop accepting new connections
+        and shut down gracefully.
       requestBody:
         content:
           application/json:
@@ -2976,7 +3282,10 @@ paths:
       tags:
         - Serve
       summary: Stop all file servers
-      description: Stops all running servers.
+      description: >-
+        Stops all running file servers at once. Useful for cleanup before shutting
+        down the rclone process or when you need to restart all servers with new
+        configurations.
       responses:
         "200":
           description: Success.
@@ -2996,7 +3305,10 @@ paths:
       tags:
         - Serve
       summary: List running servers
-      description: Returns all running file servers.
+      description: >-
+        Returns a list of all currently running file servers, including their IDs,
+        listening addresses, and configuration parameters. Use the server ID from
+        this list with serve/stop to shut down a specific server.
       responses:
         "200":
           description: Success.
@@ -3021,7 +3333,10 @@ paths:
       tags:
         - Serve
       summary: List server types
-      description: Returns available protocol types.
+      description: >-
+        Returns the list of file serving protocol types available on this rclone
+        build (e.g., http, webdav, ftp, sftp, nfs, dlna, s3). Use this to check
+        which protocols you can pass to serve/start.
       responses:
         "200":
           description: Success.
@@ -3050,7 +3365,11 @@ paths:
       tags:
         - Options
       summary: Get current options
-      description: Returns current global options or specific blocks.
+      description: >-
+        Returns the current values of all global rclone options, or only specific
+        option blocks if you provide a comma-separated list of block names. Use
+        options/blocks to discover available block names. Useful for inspecting
+        the current runtime configuration.
       requestBody:
         content:
           application/json:
@@ -3073,7 +3392,11 @@ paths:
       tags:
         - Options
       summary: Set global options
-      description: Sets global rclone options at runtime.
+      description: >-
+        Sets global rclone options at runtime without restarting the server. Pass
+        option blocks as keys with their values as nested objects. Changes take
+        effect immediately for subsequent operations. Use options/get first to
+        see the current values and expected structure.
       responses:
         "200":
           description: Success.
@@ -3093,7 +3416,11 @@ paths:
       tags:
         - Options
       summary: Get option metadata
-      description: Returns option types, defaults, and descriptions.
+      description: >-
+        Returns metadata about all available options, including their types,
+        default values, and human-readable descriptions. Use this to build
+        dynamic configuration forms or to understand what each option does
+        before changing it with options/set.
       requestBody:
         content:
           application/json:
@@ -3115,7 +3442,11 @@ paths:
       tags:
         - Options
       summary: List option blocks
-      description: Returns names of all option blocks.
+      description: >-
+        Returns the names of all available option blocks (e.g., "main", "filter",
+        "rc"). These block names can be passed to options/get, options/set, and
+        options/info to work with specific groups of options rather than all
+        options at once.
       responses:
         "200":
           description: Success.
@@ -3140,7 +3471,11 @@ paths:
       tags:
         - Options
       summary: Get local options
-      description: Returns local config and filter options (useful for checking overrides).
+      description: >-
+        Returns the local (connection-specific) config and filter options that may
+        override global settings. Use this to check if any per-connection overrides
+        are active, which is helpful for debugging unexpected behavior in filtered
+        operations.
       responses:
         "200":
           description: Success.
@@ -3165,7 +3500,11 @@ paths:
       tags:
         - Cache
       summary: Expire cache entries
-      description: Expires cache entries for a path.
+      description: >-
+        Expires cached entries for a specific path in the cache backend, forcing
+        them to be re-fetched from the underlying remote on next access. Set
+        withData to true to also delete the cached data files, not just the
+        metadata. Only applies to the cache remote type.
       security:
         - basicAuth: []
       requestBody:
@@ -3201,7 +3540,11 @@ paths:
       tags:
         - Cache
       summary: Fetch cache chunks
-      description: Ensures file chunks are cached locally.
+      description: >-
+        Pre-fetches file chunks into the local cache so they are available for
+        fast access later. The chunks parameter specifies which byte ranges to
+        fetch (e.g., ":5" for the first 5 chunks, "-5:" for the last 5). Only
+        applies to the cache remote type.
       security:
         - basicAuth: []
       requestBody:
@@ -3234,7 +3577,11 @@ paths:
       tags:
         - Cache
       summary: Get cache statistics
-      description: Returns cache backend statistics.
+      description: >-
+        Returns statistics for the cache backend, including cache hit/miss rates,
+        storage usage, and other performance metrics. Only applies to the cache
+        remote type. Useful for monitoring cache effectiveness and tuning cache
+        settings.
       responses:
         "200":
           description: Success.
@@ -3254,7 +3601,12 @@ paths:
       tags:
         - Backend
       summary: Execute a backend command
-      description: Runs a backend-specific command.
+      description: >-
+        Executes a command specific to the backend type of a remote. Available
+        commands vary by backend — for example, Google Drive supports "get" to
+        download by ID, and S3 supports "versioning" to manage object versions.
+        The fs parameter specifies which remote to run the command against.
+        Use "noop" as the command to test connectivity.
       security:
         - basicAuth: []
       requestBody:
@@ -3306,7 +3658,11 @@ paths:
       tags:
         - FsCache
       summary: Clear filesystem cache
-      description: Clears the internal filesystem object cache.
+      description: >-
+        Clears the internal filesystem object cache, forcing rclone to re-create
+        filesystem objects on next use. This can help resolve stale connection
+        issues or force rclone to pick up configuration changes for a remote
+        without restarting.
       responses:
         "200":
           description: Success.
@@ -3326,7 +3682,10 @@ paths:
       tags:
         - FsCache
       summary: Get cache entry count
-      description: Returns number of items in fs cache.
+      description: >-
+        Returns the number of filesystem objects currently held in the internal
+        cache. A high number may indicate many remotes have been accessed. Use
+        fscache/clear to reset the cache if needed.
       responses:
         "200":
           description: Success.
@@ -3348,7 +3707,10 @@ paths:
       tags:
         - Plugins
       summary: Add a plugin
-      description: Adds a web GUI plugin from GitHub.
+      description: >-
+        Installs a web GUI plugin from a GitHub repository URL. The plugin will
+        be downloaded and made available in the rclone web interface. Only works
+        when the web GUI is enabled (--rc-web-gui flag).
       requestBody:
         content:
           application/json:
@@ -3373,7 +3735,11 @@ paths:
       tags:
         - Plugins
       summary: List plugins
-      description: Returns loaded and test plugins.
+      description: >-
+        Returns all installed plugins, separated into production (loaded) plugins
+        and test plugins. Each plugin entry includes its metadata such as name,
+        type, and configuration. Use this to see what plugins are currently
+        available in the web GUI.
       responses:
         "200":
           description: Success.
@@ -3402,7 +3768,11 @@ paths:
       tags:
         - Plugins
       summary: Get plugins for a type
-      description: Returns plugins matching a MIME/plugin type.
+      description: >-
+        Returns plugins that can handle a specific MIME type or plugin type. For
+        example, pass type "video/mp4" to find plugins that handle MP4 files, or
+        pass pluginType "DASHBOARD" to find dashboard plugins. Useful for
+        dynamically selecting the right plugin for a given file or context.
       requestBody:
         content:
           application/json:
@@ -3431,7 +3801,10 @@ paths:
       tags:
         - Plugins
       summary: List test plugins
-      description: Returns loaded test plugins.
+      description: >-
+        Returns only the test plugins that are currently loaded. Test plugins are
+        plugins installed in development/testing mode, separate from production
+        plugins. Use this to verify which test plugins are active.
       responses:
         "200":
           description: Success.
@@ -3451,7 +3824,10 @@ paths:
       tags:
         - Plugins
       summary: Remove a plugin
-      description: Removes an installed plugin.
+      description: >-
+        Removes an installed production plugin by name. The plugin files are
+        deleted from disk and it will no longer be available in the web GUI.
+        Use pluginsctl/listPlugins to find the exact plugin name.
       requestBody:
         content:
           application/json:
@@ -3476,7 +3852,10 @@ paths:
       tags:
         - Plugins
       summary: Remove a test plugin
-      description: Removes a test plugin.
+      description: >-
+        Removes a test plugin by name. The plugin files are deleted from disk
+        and it will no longer be available for testing. Use
+        pluginsctl/listTestPlugins to find the exact plugin name.
       requestBody:
         content:
           application/json:
@@ -3500,7 +3879,11 @@ paths:
       tags:
         - Debug
       summary: Set block profile rate
-      description: Sets Go block profile rate.
+      description: >-
+        Sets the Go runtime block profile rate, which controls how frequently
+        blocking events (like mutex waits and channel operations) are recorded in
+        profiles. Set to 0 to disable, or a positive number for the sampling rate
+        in nanoseconds. Intended for advanced performance debugging.
       requestBody:
         content:
           application/json:
@@ -3524,7 +3907,11 @@ paths:
       tags:
         - Debug
       summary: Set GC percentage
-      description: Sets Go GC target percentage.
+      description: >-
+        Sets the Go garbage collector target percentage. A value of 100 (the
+        default) means GC runs when the heap doubles in size. Lower values trigger
+        GC more often (using less memory but more CPU), higher values trigger it
+        less often. Set to -1 to disable automatic GC entirely.
       requestBody:
         content:
           application/json:
@@ -3548,7 +3935,11 @@ paths:
       tags:
         - Debug
       summary: Set mutex profile fraction
-      description: Sets mutex contention profile fraction.
+      description: >-
+        Sets the fraction of mutex contention events that are reported in the
+        mutex profile. Set to 0 to disable, or a positive number N to report 1/N
+        of all events. Returns the previous rate. Intended for diagnosing lock
+        contention issues in advanced debugging scenarios.
       requestBody:
         content:
           application/json:
@@ -3574,7 +3965,12 @@ paths:
       tags:
         - Debug
       summary: Set soft memory limit
-      description: Sets Go runtime soft memory limit.
+      description: >-
+        Sets the Go runtime soft memory limit in bytes. When memory usage
+        approaches this limit, the garbage collector will run more aggressively
+        to try to stay under it. This is a soft limit — rclone may briefly exceed
+        it. Useful for constraining rclone memory usage on shared or
+        resource-limited systems.
       requestBody:
         content:
           application/json:
