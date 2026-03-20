@@ -1,0 +1,3595 @@
+openapi: 3.1.0
+info:
+  title: Rclone RC API
+  version: "1.40"
+  description: >-
+    Comprehensive documentation for the Rclone Remote Control (RC) API. Rclone
+    RC provides an HTTP API to control rclone programmatically — manage remotes,
+    transfer files, sync directories, mount filesystems, and monitor jobs.
+
+
+    ## Getting Started
+
+
+    Start the rclone RC server:
+
+
+    ```bash
+
+    # Start with default settings (rclone rc on localhost:5572)
+
+    rclone rcd --rc-no-auth --rc-allow-origin='https://rclone-rc-api.cloudnrain.com'
+
+    rclone rcd --rc-no-auth --rc-allow-origin='http://localhost:5173' # If you spin up this vite app
+
+
+    # Start with authentication
+
+    rclone rcd --rc-user=admin --rc-pass=secret
+
+
+    # Start with custom address
+
+    rclone rcd --rc-addr=:8080 --rc-no-auth
+
+
+    # Start with web GUI
+
+    rclone rcd --rc-web-gui --rc-no-auth
+
+    ```
+
+
+    ## Authentication
+
+
+    By default, rclone requires authentication for methods that access remotes.
+    You can configure auth with:
+
+
+    - `--rc-user` / `--rc-pass` — Basic HTTP authentication
+
+    - `--rc-htpasswd` — htpasswd file for authentication
+
+    - `--rc-no-auth` — Disable authentication (use only in trusted environments)
+
+
+    ## Special Parameters
+
+
+    All endpoints accept these special underscore-prefixed parameters:
+
+
+    | Parameter | Type | Description |
+
+    |-----------|------|-------------|
+
+    | `_async` | boolean | Run the command asynchronously. Returns a `jobid`
+    immediately. |
+
+    | `_config` | object | Override global config flags for the duration of this
+    call. |
+
+    | `_filter` | object | Set file filters for the duration of this call. |
+
+    | `_group` | string | Assign a stats group name for metrics tracking. |
+
+
+    ## Input Methods
+
+
+    All endpoints accept `POST` requests. Parameters can be sent as:
+
+
+    - **JSON body** (recommended): `Content-Type: application/json`
+
+    - **URL query parameters**: `?param=value`
+
+    - **Form data**: `Content-Type: application/x-www-form-urlencoded`
+
+
+    JSON body takes precedence when multiple methods are used.
+
+
+    ## Error Handling
+
+
+    Errors return a non-2xx HTTP status with a JSON body:
+
+
+    ```json
+
+    {
+      "error": "description of error",
+      "input": { "original": "parameters" },
+      "status": 500,
+      "path": "endpoint/path"
+    }
+
+    ```
+  contact:
+    name: Rclone Community
+    url: https://rclone.org
+  license:
+    name: MIT
+    url: https://github.com/rclone/rclone/blob/master/COPYING
+externalDocs:
+  description: Official Rclone RC Documentation
+  url: https://rclone.org/rc/
+servers:
+  - url: http://localhost:5572
+    description: Default local rclone RC server
+  - url: http://localhost:{port}
+    description: Custom port
+    variables:
+      port:
+        default: "5572"
+  - url: https://{host}:{port}
+    description: Custom port
+    variables:
+      host:
+        default: example.com
+      port:
+        default: "5572"
+tags:
+  - name: RC
+    description: Remote control utility endpoints — echo, list commands, and testing.
+  - name: Core
+    description: Core system operations — version info, memory stats, bandwidth,
+      process control, transfer stats, and garbage collection.
+  - name: Config
+    description: Manage rclone configuration — create, read, update, and delete remotes.
+  - name: Operations
+    description:
+      File and directory operations — list, copy, move, delete, mkdir,
+      stat, upload, and more.
+  - name: Sync
+    description: Synchronization operations — copy, move, sync, and bisync between remotes.
+  - name: Mount
+    description: Mount and unmount remote filesystems locally via FUSE.
+  - name: VFS
+    description: Virtual File System operations — refresh cache, manage upload
+      queues, and VFS stats.
+  - name: Job
+    description: Async job management — list, monitor status, stop, and batch execute jobs.
+  - name: Serve
+    description: Start and stop file serving protocols — HTTP, WebDAV, FTP, SFTP, NFS, etc.
+  - name: Options
+    description: Read and modify global rclone options at runtime.
+  - name: Cache
+    description: Cache backend operations — expire entries, fetch chunks, and view stats.
+  - name: Backend
+    description: Execute backend-specific commands on remotes.
+  - name: FsCache
+    description: Manage the filesystem object cache.
+  - name: Plugins
+    description: Manage rclone web GUI plugins.
+  - name: Debug
+    description:
+      Debug and profiling endpoints — memory limits, profile rates, and
+      GC tuning.
+components:
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
+      description: HTTP Basic Authentication using --rc-user and --rc-pass credentials.
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          example: remote not found
+        input:
+          type: object
+        status:
+          type: integer
+          example: 500
+        path:
+          type: string
+          example: operations/list
+    AsyncResponse:
+      type: object
+      properties:
+        jobid:
+          type: integer
+          example: 1
+        executeId:
+          type: string
+    VersionInfo:
+      type: object
+      properties:
+        version:
+          type: string
+          example: v1.68.1
+        decomposed:
+          type: array
+          items:
+            type: integer
+        isGit:
+          type: boolean
+        isBeta:
+          type: boolean
+        os:
+          type: string
+          example: linux
+        arch:
+          type: string
+          example: amd64
+        goVersion:
+          type: string
+          example: go1.22
+    BandwidthLimit:
+      type: object
+      properties:
+        bytesPerSecond:
+          type: integer
+          example: 1048576
+        bytesPerSecondTx:
+          type: integer
+        bytesPerSecondRx:
+          type: integer
+        rate:
+          type: string
+          example: 1M
+    ListItem:
+      type: object
+      properties:
+        Path:
+          type: string
+          example: documents/report.pdf
+        Name:
+          type: string
+          example: report.pdf
+        Size:
+          type: integer
+          example: 1048576
+        MimeType:
+          type: string
+          example: application/pdf
+        ModTime:
+          type: string
+          format: date-time
+        IsDir:
+          type: boolean
+        Hashes:
+          type: object
+          additionalProperties:
+            type: string
+        ID:
+          type: string
+        Metadata:
+          type: object
+    ListOptions:
+      type: object
+      properties:
+        recurse:
+          type: boolean
+          default: false
+        noModTime:
+          type: boolean
+          default: false
+        showEncrypted:
+          type: boolean
+          default: false
+        showOrigIDs:
+          type: boolean
+          default: false
+        showHash:
+          type: boolean
+          default: false
+        noMimeType:
+          type: boolean
+          default: false
+        dirsOnly:
+          type: boolean
+          default: false
+        filesOnly:
+          type: boolean
+          default: false
+        metadata:
+          type: boolean
+          default: false
+        hashTypes:
+          type: array
+          items:
+            type: string
+    JobStatus:
+      type: object
+      properties:
+        finished:
+          type: boolean
+        duration:
+          type: number
+        endTime:
+          type: string
+          format: date-time
+        startTime:
+          type: string
+          format: date-time
+        error:
+          type: string
+        id:
+          type: integer
+        success:
+          type: boolean
+        output:
+          type: object
+        progress:
+          type: object
+    TransferStats:
+      type: object
+      properties:
+        speed:
+          type: number
+        bytes:
+          type: integer
+        errors:
+          type: integer
+        fatalError:
+          type: boolean
+        checks:
+          type: integer
+        transfers:
+          type: integer
+        deletes:
+          type: integer
+        elapsedTime:
+          type: number
+        totalBytes:
+          type: integer
+        transferring:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              size:
+                type: integer
+              bytes:
+                type: integer
+              percentage:
+                type: integer
+              speed:
+                type: number
+    MountOptions:
+      type: object
+      properties:
+        AllowOther:
+          type: boolean
+        AllowNonEmpty:
+          type: boolean
+        AllowRoot:
+          type: boolean
+        DefaultPermissions:
+          type: boolean
+    VfsOptions:
+      type: object
+      properties:
+        CacheMode:
+          type: integer
+          enum:
+            - 0
+            - 1
+            - 2
+            - 3
+          default: 0
+        CacheMaxAge:
+          type: string
+          example: 1h0m0s
+        CacheMaxSize:
+          type: string
+          example: 10G
+        ReadAhead:
+          type: string
+          example: 128k
+    ServeInfo:
+      type: object
+      properties:
+        id:
+          type: string
+          example: nfs-ecfc6852
+        addr:
+          type: string
+          example: "[::]:4321"
+        params:
+          type: object
+    ConfigPaths:
+      type: object
+      properties:
+        cache:
+          type: string
+          example: /home/user/.cache/rclone
+        config:
+          type: string
+          example: /home/user/.config/rclone/rclone.conf
+        temp:
+          type: string
+          example: /tmp
+paths:
+  /rc/noop:
+    post:
+      operationId: rc_noop
+      tags:
+        - RC
+      summary: Echo parameters (no auth)
+      description: Echoes back all input parameters. Useful for testing connectivity.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                param1:
+                  type: string
+                param2:
+                  type: string
+            example:
+              param1: one
+              param2: two
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+              example:
+                param1: one
+                param2: two
+  /rc/noopauth:
+    post:
+      operationId: rc_noopauth
+      tags:
+        - RC
+      summary: Echo parameters (requires auth)
+      description: Same as rc/noop but requires authentication.
+      security:
+        - basicAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                test:
+                  type: string
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+        "500":
+          description: Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /rc/list:
+    post:
+      operationId: rc_list
+      tags:
+        - RC
+      summary: List all available RC commands
+      description:
+        Returns a JSON object listing all registered RC commands with their
+        descriptions.
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+            example: {}
+  /rc/error:
+    post:
+      operationId: rc_error
+      tags:
+        - RC
+      summary: Return an error (testing)
+      description: Returns an error response. Used for testing error handling.
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+            example: {}
+  /rc/fatal:
+    post:
+      operationId: rc_fatal
+      tags:
+        - RC
+      summary: Return a fatal error (testing)
+      description: Returns a fatal error. Used for testing fatal error handling.
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+            example: {}
+  /rc/panic:
+    post:
+      operationId: rc_panic
+      tags:
+        - RC
+      summary: Trigger a panic (testing)
+      description:
+        "Panics the server. **Warning**: May crash the server if panic
+        recovery is not enabled."
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+            example: {}
+  /core/version:
+    post:
+      operationId: core_version
+      tags:
+        - Core
+      summary: Get rclone version info
+      description:
+        Returns detailed version information including OS, architecture,
+        and Go version.
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionInfo"
+              example:
+                version: v1.68.1
+                decomposed:
+                  - 1
+                  - 68
+                  - 1
+                isGit: false
+                isBeta: false
+                os: linux
+                arch: amd64
+                goVersion: go1.22.5
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+            example: {}
+  /core/pid:
+    post:
+      operationId: core_pid
+      tags:
+        - Core
+      summary: Get current process PID
+      description: Returns the PID of the running rclone process.
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+              example:
+                pid: 12345
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+            example: {}
+  /core/memstats:
+    post:
+      operationId: core_memstats
+      tags:
+        - Core
+      summary: Get Go memory statistics
+      description:
+        Returns Go runtime memory statistics including heap allocation and
+        GC stats.
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+            example: {}
+  /core/gc:
+    post:
+      operationId: core_gc
+      tags:
+        - Core
+      summary: Run garbage collection
+      description: Triggers Go runtime garbage collection.
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+            example: {}
+  /core/du:
+    post:
+      operationId: core_du
+      tags:
+        - Core
+      summary: Get disk usage
+      description: Returns disk usage for a local directory.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                dir:
+                  type: string
+                  example: /home/user
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+              example:
+                dir: /
+                info:
+                  Available: 361769115648
+                  Free: 361785892864
+                  Total: 982141468672
+  /core/bwlimit:
+    post:
+      operationId: core_bwlimit
+      tags:
+        - Core
+      summary: Get or set bandwidth limit
+      description:
+        Query or set bandwidth limit. Supports separate upload/download
+        limits with `upload:download` syntax.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                rate:
+                  type: string
+                  description: Bandwidth limit, e.g. '1M', '1M:100k', 'off'
+                  example: 1M:100k
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BandwidthLimit"
+  /core/stats:
+    post:
+      operationId: core_stats
+      tags:
+        - Core
+      summary: Get transfer statistics
+      description: Returns comprehensive transfer statistics.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                group:
+                  type: string
+                short:
+                  type: boolean
+                  default: false
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransferStats"
+  /core/stats-reset:
+    post:
+      operationId: core_stats-reset
+      tags:
+        - Core
+      summary: Reset transfer statistics
+      description: Resets transfer statistics counters.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                group:
+                  type: string
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+  /core/stats-delete:
+    post:
+      operationId: core_stats-delete
+      tags:
+        - Core
+      summary: Delete a stats group
+      description: Deletes a specific stats group.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                group:
+                  type: string
+              required:
+                - group
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+  /core/transferred:
+    post:
+      operationId: core_transferred
+      tags:
+        - Core
+      summary: Get completed transfers
+      description: Returns list of completed transfers (up to 100).
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                group:
+                  type: string
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  transferred:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                        size:
+                          type: integer
+                        bytes:
+                          type: integer
+                        error:
+                          type: string
+  /core/group-list:
+    post:
+      operationId: core_group-list
+      tags:
+        - Core
+      summary: List stats groups
+      description: Returns all stats group names.
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+              example:
+                groups:
+                  - job/1
+                  - job/2
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+            example: {}
+  /core/quit:
+    post:
+      operationId: core_quit
+      tags:
+        - Core
+      summary: Quit rclone
+      description: Gracefully terminates the rclone process.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exitCode:
+                  type: integer
+                  default: 0
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+  /core/obscure:
+    post:
+      operationId: core_obscure
+      tags:
+        - Core
+      summary: Obscure a password
+      description: Obscures a plaintext password using rclone's algorithm.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                clear:
+                  type: string
+                  example: mypassword
+              required:
+                - clear
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+              example:
+                obscured: U2FsdGVkX1...
+  /core/command:
+    post:
+      operationId: core_command
+      tags:
+        - Core
+      summary: Execute an rclone command
+      description: Execute any rclone command via the RC API.
+      security:
+        - basicAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                command:
+                  type: string
+                  example: ls
+                arg:
+                  type: array
+                  items:
+                    type: string
+                  example:
+                    - remote:path
+                opt:
+                  type: object
+                returnType:
+                  type: string
+                  enum:
+                    - COMBINED_OUTPUT
+                    - STREAM
+                    - STREAM_ONLY_STDOUT
+                    - STREAM_ONLY_STDERR
+              required:
+                - command
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+        "500":
+          description: Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /config/create:
+    post:
+      operationId: config_create
+      tags:
+        - Config
+      summary: Create a new remote
+      description: Creates a new remote configuration.
+      security:
+        - basicAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: myremote
+                type:
+                  type: string
+                  example: s3
+                parameters:
+                  type: object
+                  additionalProperties:
+                    type: string
+                opt:
+                  type: object
+                  properties:
+                    obscure:
+                      type: boolean
+                    noObscure:
+                      type: boolean
+                    nonInteractive:
+                      type: boolean
+              required:
+                - name
+                - type
+            example:
+              name: my-s3
+              type: s3
+              parameters:
+                provider: AWS
+                access_key_id: AKIAIOSFODNN7EXAMPLE
+                region: us-east-1
+              opt:
+                nonInteractive: true
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+        "500":
+          description: Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /config/update:
+    post:
+      operationId: config_update
+      tags:
+        - Config
+      summary: Update an existing remote
+      description: Updates an existing remote configuration.
+      security:
+        - basicAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                parameters:
+                  type: object
+                opt:
+                  type: object
+              required:
+                - name
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+        "500":
+          description: Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /config/delete:
+    post:
+      operationId: config_delete
+      tags:
+        - Config
+      summary: Delete a remote
+      description: Deletes a remote by name.
+      security:
+        - basicAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: myremote
+              required:
+                - name
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+        "500":
+          description: Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /config/get:
+    post:
+      operationId: config_get
+      tags:
+        - Config
+      summary: Get a remote's config
+      description: Returns configuration for a specific remote.
+      security:
+        - basicAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: myremote
+              required:
+                - name
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+              example:
+                type: s3
+                provider: AWS
+                region: us-east-1
+        "500":
+          description: Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /config/dump:
+    post:
+      operationId: config_dump
+      tags:
+        - Config
+      summary: Dump all remote configs
+      description: Returns full configuration for all remotes.
+      security:
+        - basicAuth: []
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+              example:
+                my-s3:
+                  type: s3
+                  region: us-east-1
+                my-drive:
+                  type: drive
+        "500":
+          description: Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+            example: {}
+  /config/listremotes:
+    post:
+      operationId: config_listremotes
+      tags:
+        - Config
+      summary: List all remote names
+      description: Returns array of configured remote names.
+      security:
+        - basicAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+            example: {}
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+              example:
+                remotes:
+                  - my-s3
+                  - my-drive
+                  - my-dropbox
+        "500":
+          description: Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /config/password:
+    post:
+      operationId: config_password
+      tags:
+        - Config
+      summary: Set password parameters
+      description: Sets password parameters for a remote (auto-obscured).
+      security:
+        - basicAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                parameters:
+                  type: object
+              required:
+                - name
+                - parameters
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+        "500":
+          description: Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /config/paths:
+    post:
+      operationId: config_paths
+      tags:
+        - Config
+      summary: Get config file paths
+      description: Returns paths to config file, cache, and temp directories.
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConfigPaths"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+            example: {}
+  /config/providers:
+    post:
+      operationId: config_providers
+      tags:
+        - Config
+      summary: List available providers
+      description: Returns all available storage providers with config options.
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  providers:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        Name:
+                          type: string
+                        Description:
+                          type: string
+                        Prefix:
+                          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+            example: {}
+  /config/setpath:
+    post:
+      operationId: config_setpath
+      tags:
+        - Config
+      summary: Set config file path
+      description: Changes the rclone config file path.
+      security:
+        - basicAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                path:
+                  type: string
+                  example: /etc/rclone/rclone.conf
+              required:
+                - path
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+        "500":
+          description: Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /config/unlock:
+    post:
+      operationId: config_unlock
+      tags:
+        - Config
+      summary: Unlock encrypted config
+      description: Unlocks an encrypted configuration file.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                configPassword:
+                  type: string
+              required:
+                - configPassword
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+  /operations/list:
+    post:
+      operationId: operations_list
+      tags:
+        - Operations
+      summary: List files and directories
+      description:
+        Lists files and directories in a remote path. Supports recursion,
+        hashes, metadata, and filtering.
+      security:
+        - basicAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fs:
+                  type: string
+                  example: drive:documents
+                remote:
+                  type: string
+                  example: subfolder
+                opt:
+                  $ref: "#/components/schemas/ListOptions"
+              required:
+                - fs
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  list:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ListItem"
+        "500":
+          description: Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /operations/stat:
+    post:
+      operationId: operations_stat
+      tags:
+        - Operations
+      summary: Get file/directory info
+      description: Returns info about a single file or directory. Returns null if not found.
+      security:
+        - basicAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fs:
+                  type: string
+                  example: "drive:"
+                remote:
+                  type: string
+                  example: report.pdf
+                opt:
+                  $ref: "#/components/schemas/ListOptions"
+              required:
+                - fs
+                - remote
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+        "500":
+          description: Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /operations/about:
+    post:
+      operationId: operations_about
+      tags:
+        - Operations
+      summary: Get remote storage info
+      description: Returns storage space information (total, used, free, trashed).
+      security:
+        - basicAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fs:
+                  type: string
+                  example: "drive:"
+              required:
+                - fs
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total:
+                    type: integer
+                  used:
+                    type: integer
+                  free:
+                    type: integer
+                  trashed:
+                    type: integer
+        "500":
+          description: Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /operations/mkdir:
+    post:
+      operationId: operations_mkdir
+      tags:
+        - Operations
+      summary: Create a directory
+      description: Creates a directory at the specified path.
+      security:
+        - basicAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fs:
+                  type: string
+                  example: "drive:"
+                remote:
+                  type: string
+                  example: new-folder
+              required:
+                - fs
+                - remote
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+        "500":
+          description: Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /operations/rmdir:
+    post:
+      operationId: operations_rmdir
+      tags:
+        - Operations
+      summary: Remove an empty directory
+      description: Removes an empty directory. Fails if not empty.
+      security:
+        - basicAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fs:
+                  type: string
+                remote:
+                  type: string
+              required:
+                - fs
+                - remote
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+        "500":
+          description: Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /operations/rmdirs:
+    post:
+      operationId: operations_rmdirs
+      tags:
+        - Operations
+      summary: Remove empty directories recursively
+      description: Removes empty directories under a path.
+      security:
+        - basicAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fs:
+                  type: string
+                remote:
+                  type: string
+                leaveRoot:
+                  type: boolean
+                  default: false
+              required:
+                - fs
+                - remote
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+        "500":
+          description: Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /operations/purge:
+    post:
+      operationId: operations_purge
+      tags:
+        - Operations
+      summary: Remove directory and all contents
+      description: Recursively removes a directory and contents. **Destructive.**
+      security:
+        - basicAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fs:
+                  type: string
+                remote:
+                  type: string
+              required:
+                - fs
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+        "500":
+          description: Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /operations/copyfile:
+    post:
+      operationId: operations_copyfile
+      tags:
+        - Operations
+      summary: Copy a single file
+      description: Copies a file between remotes.
+      security:
+        - basicAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                srcFs:
+                  type: string
+                  example: "drive:"
+                srcRemote:
+                  type: string
+                  example: file.txt
+                dstFs:
+                  type: string
+                  example: s3:bucket
+                dstRemote:
+                  type: string
+                  example: backup/file.txt
+              required:
+                - srcFs
+                - srcRemote
+                - dstFs
+                - dstRemote
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+        "500":
+          description: Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /operations/movefile:
+    post:
+      operationId: operations_movefile
+      tags:
+        - Operations
+      summary: Move a single file
+      description: Moves a file between remotes. Source deleted after copy.
+      security:
+        - basicAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                srcFs:
+                  type: string
+                srcRemote:
+                  type: string
+                dstFs:
+                  type: string
+                dstRemote:
+                  type: string
+              required:
+                - srcFs
+                - srcRemote
+                - dstFs
+                - dstRemote
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+        "500":
+          description: Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /operations/copyurl:
+    post:
+      operationId: operations_copyurl
+      tags:
+        - Operations
+      summary: Copy a URL to a remote
+      description: Downloads from URL and saves to remote.
+      security:
+        - basicAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fs:
+                  type: string
+                remote:
+                  type: string
+                url:
+                  type: string
+                  example: https://example.com/file.zip
+                autoFilename:
+                  type: boolean
+                  default: false
+              required:
+                - fs
+                - remote
+                - url
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+        "500":
+          description: Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /operations/delete:
+    post:
+      operationId: operations_delete
+      tags:
+        - Operations
+      summary: Delete files in a remote
+      description: Removes all files in path (not directories). **Destructive.**
+      security:
+        - basicAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fs:
+                  type: string
+                  example: drive:temp
+              required:
+                - fs
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+        "500":
+          description: Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /operations/deletefile:
+    post:
+      operationId: operations_deletefile
+      tags:
+        - Operations
+      summary: Delete a single file
+      description: Deletes a single file.
+      security:
+        - basicAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fs:
+                  type: string
+                remote:
+                  type: string
+              required:
+                - fs
+                - remote
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+        "500":
+          description: Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /operations/cleanup:
+    post:
+      operationId: operations_cleanup
+      tags:
+        - Operations
+      summary: Clean up remote trash
+      description: Cleans up trash/old versions (if backend supports it).
+      security:
+        - basicAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fs:
+                  type: string
+                  example: "drive:"
+              required:
+                - fs
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+        "500":
+          description: Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /operations/fsinfo:
+    post:
+      operationId: operations_fsinfo
+      tags:
+        - Operations
+      summary: Get remote filesystem info
+      description: Returns features, hashes, and metadata capabilities.
+      security:
+        - basicAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fs:
+                  type: string
+                  example: "drive:"
+              required:
+                - fs
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+        "500":
+          description: Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /operations/size:
+    post:
+      operationId: operations_size
+      tags:
+        - Operations
+      summary: Get total size of a remote
+      description: Returns total file count and bytes.
+      security:
+        - basicAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fs:
+                  type: string
+                  example: drive:documents
+              required:
+                - fs
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+              example:
+                count: 42
+                bytes: 104857600
+        "500":
+          description: Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /operations/publiclink:
+    post:
+      operationId: operations_publiclink
+      tags:
+        - Operations
+      summary: Create a public link
+      description: Creates public link to file/directory.
+      security:
+        - basicAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fs:
+                  type: string
+                remote:
+                  type: string
+                unlink:
+                  type: boolean
+                  default: false
+                expire:
+                  type: string
+                  example: 24h
+              required:
+                - fs
+                - remote
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+              example:
+                url: https://drive.google.com/file/d/...
+        "500":
+          description: Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /operations/hashsum:
+    post:
+      operationId: operations_hashsum
+      tags:
+        - Operations
+      summary: Calculate hash sums
+      description: Produces hashsum for all files in path.
+      security:
+        - basicAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fs:
+                  type: string
+                hashType:
+                  type: string
+                  enum:
+                    - MD5
+                    - SHA-1
+                    - SHA-256
+                download:
+                  type: boolean
+                  default: false
+                base64:
+                  type: boolean
+                  default: false
+              required:
+                - fs
+                - hashType
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+        "500":
+          description: Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /operations/hashsumfile:
+    post:
+      operationId: operations_hashsumfile
+      tags:
+        - Operations
+      summary: Calculate hash for a file
+      description: Returns hash of a single file.
+      security:
+        - basicAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fs:
+                  type: string
+                remote:
+                  type: string
+                hashType:
+                  type: string
+                download:
+                  type: boolean
+                base64:
+                  type: boolean
+              required:
+                - fs
+                - remote
+                - hashType
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+        "500":
+          description: Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /operations/check:
+    post:
+      operationId: operations_check
+      tags:
+        - Operations
+      summary: Check files between remotes
+      description: Checks for differences between source and destination.
+      security:
+        - basicAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                srcFs:
+                  type: string
+                dstFs:
+                  type: string
+                download:
+                  type: boolean
+                oneWay:
+                  type: boolean
+                combined:
+                  type: boolean
+                missingOnSrc:
+                  type: boolean
+                missingOnDst:
+                  type: boolean
+                match:
+                  type: boolean
+                differ:
+                  type: boolean
+                error:
+                  type: boolean
+              required:
+                - srcFs
+                - dstFs
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+        "500":
+          description: Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /operations/settier:
+    post:
+      operationId: operations_settier
+      tags:
+        - Operations
+      summary: Set storage tier for remote
+      description: Changes storage tier for all files.
+      security:
+        - basicAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fs:
+                  type: string
+              required:
+                - fs
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+        "500":
+          description: Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /operations/settierfile:
+    post:
+      operationId: operations_settierfile
+      tags:
+        - Operations
+      summary: Set storage tier for a file
+      description: Changes storage tier for one file.
+      security:
+        - basicAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fs:
+                  type: string
+                remote:
+                  type: string
+              required:
+                - fs
+                - remote
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+        "500":
+          description: Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /operations/uploadfile:
+    post:
+      operationId: operations_uploadfile
+      tags:
+        - Operations
+      summary: Upload a file
+      description: Uploads a file via multipart form data.
+      security:
+        - basicAuth: []
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - fs
+                - remote
+                - file
+              properties:
+                fs:
+                  type: string
+                remote:
+                  type: string
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: File uploaded.
+          content:
+            application/json:
+              schema:
+                type: object
+  /sync/copy:
+    post:
+      operationId: sync_copy
+      tags:
+        - Sync
+      summary: Copy files between remotes
+      description:
+        Copies files from source to destination, skipping existing. Use
+        with `_async=true` for large transfers.
+      security:
+        - basicAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                srcFs:
+                  type: string
+                  example: drive:documents
+                dstFs:
+                  type: string
+                  example: s3:backup
+                createEmptySrcDirs:
+                  type: boolean
+                  default: false
+                _async:
+                  type: boolean
+                  default: false
+              required:
+                - srcFs
+                - dstFs
+            example:
+              srcFs: drive:documents
+              dstFs: s3:backup
+              _async: true
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+        "500":
+          description: Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /sync/move:
+    post:
+      operationId: sync_move
+      tags:
+        - Sync
+      summary: Move files between remotes
+      description: Moves files from source to destination. Source deleted after copy.
+      security:
+        - basicAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                srcFs:
+                  type: string
+                dstFs:
+                  type: string
+                createEmptySrcDirs:
+                  type: boolean
+                deleteEmptySrcDirs:
+                  type: boolean
+                _async:
+                  type: boolean
+              required:
+                - srcFs
+                - dstFs
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+        "500":
+          description: Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /sync/sync:
+    post:
+      operationId: sync_sync
+      tags:
+        - Sync
+      summary: Sync destination to match source
+      description: Makes destination match source, **deleting extra files on
+        destination**. Use `_async=true`.
+      security:
+        - basicAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                srcFs:
+                  type: string
+                  example: drive:master
+                dstFs:
+                  type: string
+                  example: s3:mirror
+                createEmptySrcDirs:
+                  type: boolean
+                _async:
+                  type: boolean
+              required:
+                - srcFs
+                - dstFs
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+        "500":
+          description: Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /sync/bisync:
+    post:
+      operationId: sync_bisync
+      tags:
+        - Sync
+      summary: Bidirectional sync
+      description: Bidirectional sync — changes on either side propagated to the other.
+      security:
+        - basicAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                path1:
+                  type: string
+                  example: drive:sync
+                path2:
+                  type: string
+                  example: /local/sync
+                dryRun:
+                  type: boolean
+                resync:
+                  type: boolean
+                checkAccess:
+                  type: boolean
+                maxDelete:
+                  type: integer
+                  default: 50
+                force:
+                  type: boolean
+                createEmptySrcDirs:
+                  type: boolean
+                removeEmptyDirs:
+                  type: boolean
+                resilient:
+                  type: boolean
+                noCleanup:
+                  type: boolean
+                _async:
+                  type: boolean
+              required:
+                - path1
+                - path2
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+        "500":
+          description: Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /mount/mount:
+    post:
+      operationId: mount_mount
+      tags:
+        - Mount
+      summary: Mount a remote
+      description: Mounts a remote filesystem to a local mount point via FUSE.
+      security:
+        - basicAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fs:
+                  type: string
+                  example: "drive:"
+                mountPoint:
+                  type: string
+                  example: /mnt/drive
+                mountType:
+                  type: string
+                  enum:
+                    - mount
+                    - cmount
+                    - mount2
+                mountOpt:
+                  $ref: "#/components/schemas/MountOptions"
+                vfsOpt:
+                  $ref: "#/components/schemas/VfsOptions"
+              required:
+                - fs
+                - mountPoint
+            example:
+              fs: "drive:"
+              mountPoint: /mnt/drive
+              vfsOpt:
+                CacheMode: 3
+              mountOpt:
+                AllowOther: true
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+        "500":
+          description: Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /mount/unmount:
+    post:
+      operationId: mount_unmount
+      tags:
+        - Mount
+      summary: Unmount a mount point
+      description: Unmounts a previously mounted filesystem.
+      security:
+        - basicAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                mountPoint:
+                  type: string
+                  example: /mnt/drive
+              required:
+                - mountPoint
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+        "500":
+          description: Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /mount/unmountall:
+    post:
+      operationId: mount_unmountall
+      tags:
+        - Mount
+      summary: Unmount all mount points
+      description: Unmounts all currently mounted filesystems.
+      security:
+        - basicAuth: []
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+        "500":
+          description: Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+            example: {}
+  /mount/listmounts:
+    post:
+      operationId: mount_listmounts
+      tags:
+        - Mount
+      summary: List active mounts
+      description: Returns all currently active mount points.
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mountPoints:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        Fs:
+                          type: string
+                        MountPoint:
+                          type: string
+                        MountedOn:
+                          type: string
+                          format: date-time
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+            example: {}
+  /mount/types:
+    post:
+      operationId: mount_types
+      tags:
+        - Mount
+      summary: List mount types
+      description: Returns available mount types.
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+              example:
+                mountTypes:
+                  - mount
+                  - cmount
+                  - mount2
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+            example: {}
+  /vfs/refresh:
+    post:
+      operationId: vfs_refresh
+      tags:
+        - VFS
+      summary: Refresh VFS directory cache
+      description: Refreshes VFS directory cache.
+      security:
+        - basicAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fs:
+                  type: string
+                dir:
+                  type: string
+                recursive:
+                  type: boolean
+                  default: false
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+        "500":
+          description: Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /vfs/forget:
+    post:
+      operationId: vfs_forget
+      tags:
+        - VFS
+      summary: Forget VFS cache entries
+      description: Removes files/dirs from VFS cache.
+      security:
+        - basicAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fs:
+                  type: string
+                file:
+                  type: string
+                dir:
+                  type: string
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+        "500":
+          description: Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /vfs/list:
+    post:
+      operationId: vfs_list
+      tags:
+        - VFS
+      summary: List active VFS instances
+      description: Returns all active VFS instances.
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  vfses:
+                    type: array
+                    items:
+                      type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+            example: {}
+  /vfs/stats:
+    post:
+      operationId: vfs_stats
+      tags:
+        - VFS
+      summary: Get VFS statistics
+      description: Returns VFS stats including disk cache and metadata cache.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fs:
+                  type: string
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  diskCache:
+                    type: object
+                  metadataCache:
+                    type: object
+                  opt:
+                    $ref: "#/components/schemas/VfsOptions"
+  /vfs/poll-interval:
+    post:
+      operationId: vfs_poll-interval
+      tags:
+        - VFS
+      summary: Set VFS poll interval
+      description: Gets or sets poll interval for change detection.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fs:
+                  type: string
+                interval:
+                  type: string
+                  example: 1m
+                timeout:
+                  type: string
+                  example: 30s
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+  /vfs/queue:
+    post:
+      operationId: vfs_queue
+      tags:
+        - VFS
+      summary: Get VFS upload queue
+      description: Returns pending uploads.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fs:
+                  type: string
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                    id:
+                      type: integer
+                    size:
+                      type: integer
+                    tries:
+                      type: integer
+                    uploading:
+                      type: boolean
+  /vfs/queue-set-expiry:
+    post:
+      operationId: vfs_queue-set-expiry
+      tags:
+        - VFS
+      summary: Set expiry for queued upload
+      description: Sets expiry time for a queue item.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fs:
+                  type: string
+                id:
+                  type: integer
+                expiry:
+                  type: number
+                relative:
+                  type: boolean
+              required:
+                - id
+                - expiry
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+  /job/list:
+    post:
+      operationId: job_list
+      tags:
+        - Job
+      summary: List all jobs
+      description: Returns all async jobs.
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+              example:
+                executeId: abc123
+                jobids:
+                  - 1
+                  - 2
+                  - 3
+                running_ids:
+                  - 3
+                finished_ids:
+                  - 1
+                  - 2
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+            example: {}
+  /job/status:
+    post:
+      operationId: job_status
+      tags:
+        - Job
+      summary: Get job status
+      description: Returns current status of an async job.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                jobid:
+                  type: integer
+                  example: 1
+              required:
+                - jobid
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobStatus"
+              example:
+                finished: true
+                duration: 45.2
+                id: 1
+                success: true
+  /job/stop:
+    post:
+      operationId: job_stop
+      tags:
+        - Job
+      summary: Stop a running job
+      description: Stops an async job by ID.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                jobid:
+                  type: integer
+              required:
+                - jobid
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+  /job/stopgroup:
+    post:
+      operationId: job_stopgroup
+      tags:
+        - Job
+      summary: Stop all jobs in a group
+      description: Stops all jobs in a stats group.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                group:
+                  type: string
+              required:
+                - group
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+  /job/batch:
+    post:
+      operationId: job_batch
+      tags:
+        - Job
+      summary: Execute batch commands
+      description: Executes multiple RC commands in one request.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                concurrency:
+                  type: integer
+                  example: 4
+                inputs:
+                  type: array
+                  items:
+                    type: object
+                    required:
+                      - _path
+                    properties:
+                      _path:
+                        type: string
+                    additionalProperties: true
+              required:
+                - inputs
+            example:
+              inputs:
+                - _path: rc/noop
+                  msg: hello
+                - _path: core/version
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+  /serve/start:
+    post:
+      operationId: serve_start
+      tags:
+        - Serve
+      summary: Start a file server
+      description: Starts a file serving protocol (HTTP, WebDAV, FTP, SFTP, NFS, etc.).
+      security:
+        - basicAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                type:
+                  type: string
+                  enum:
+                    - http
+                    - webdav
+                    - ftp
+                    - sftp
+                    - nfs
+                    - dlna
+                    - s3
+                fs:
+                  type: string
+                  example: "drive:"
+                addr:
+                  type: string
+                  example: :8080
+                vfs_cache_mode:
+                  type: string
+                  enum:
+                    - off
+                    - minimal
+                    - writes
+                    - full
+              required:
+                - type
+                - fs
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServeInfo"
+              example:
+                addr: "[::]:4321"
+                id: nfs-ecfc6852
+        "500":
+          description: Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /serve/stop:
+    post:
+      operationId: serve_stop
+      tags:
+        - Serve
+      summary: Stop a file server
+      description: Stops a running server by ID.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: string
+                  example: nfs-ecfc6852
+              required:
+                - id
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+  /serve/stopall:
+    post:
+      operationId: serve_stopall
+      tags:
+        - Serve
+      summary: Stop all file servers
+      description: Stops all running servers.
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+            example: {}
+  /serve/list:
+    post:
+      operationId: serve_list
+      tags:
+        - Serve
+      summary: List running servers
+      description: Returns all running file servers.
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  list:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ServeInfo"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+            example: {}
+  /serve/types:
+    post:
+      operationId: serve_types
+      tags:
+        - Serve
+      summary: List server types
+      description: Returns available protocol types.
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+              example:
+                types:
+                  - http
+                  - webdav
+                  - ftp
+                  - sftp
+                  - nfs
+                  - dlna
+                  - s3
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+            example: {}
+  /options/get:
+    post:
+      operationId: options_get
+      tags:
+        - Options
+      summary: Get current options
+      description: Returns current global options or specific blocks.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                blocks:
+                  type: string
+                  example: main,filter
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+  /options/set:
+    post:
+      operationId: options_set
+      tags:
+        - Options
+      summary: Set global options
+      description: Sets global rclone options at runtime.
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+            example: {}
+  /options/info:
+    post:
+      operationId: options_info
+      tags:
+        - Options
+      summary: Get option metadata
+      description: Returns option types, defaults, and descriptions.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                blocks:
+                  type: string
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+  /options/blocks:
+    post:
+      operationId: options_blocks
+      tags:
+        - Options
+      summary: List option blocks
+      description: Returns names of all option blocks.
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  options:
+                    type: array
+                    items:
+                      type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+            example: {}
+  /options/local:
+    post:
+      operationId: options_local
+      tags:
+        - Options
+      summary: Get local options
+      description: Returns local config and filter options (useful for checking overrides).
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  config:
+                    type: object
+                  filter:
+                    type: object
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+            example: {}
+  /cache/expire:
+    post:
+      operationId: cache_expire
+      tags:
+        - Cache
+      summary: Expire cache entries
+      description: Expires cache entries for a path.
+      security:
+        - basicAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                remote:
+                  type: string
+                  example: path/to/folder/
+                withData:
+                  type: boolean
+                  default: false
+              required:
+                - remote
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+        "500":
+          description: Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /cache/fetch:
+    post:
+      operationId: cache_fetch
+      tags:
+        - Cache
+      summary: Fetch cache chunks
+      description: Ensures file chunks are cached locally.
+      security:
+        - basicAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                chunks:
+                  type: string
+                  example: ":5,-5:"
+                file:
+                  type: string
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+        "500":
+          description: Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /cache/stats:
+    post:
+      operationId: cache_stats
+      tags:
+        - Cache
+      summary: Get cache statistics
+      description: Returns cache backend statistics.
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+            example: {}
+  /backend/command:
+    post:
+      operationId: backend_command
+      tags:
+        - Backend
+      summary: Execute a backend command
+      description: Runs a backend-specific command.
+      security:
+        - basicAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                command:
+                  type: string
+                  example: noop
+                fs:
+                  type: string
+                  example: "drive:"
+                arg:
+                  type: array
+                  items:
+                    type: string
+                opt:
+                  type: object
+                  additionalProperties:
+                    type: string
+              required:
+                - command
+                - fs
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+              example:
+                result:
+                  arg:
+                    - path1
+                  name: noop
+                  opt:
+                    echo: yes
+        "500":
+          description: Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /fscache/clear:
+    post:
+      operationId: fscache_clear
+      tags:
+        - FsCache
+      summary: Clear filesystem cache
+      description: Clears the internal filesystem object cache.
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+            example: {}
+  /fscache/entries:
+    post:
+      operationId: fscache_entries
+      tags:
+        - FsCache
+      summary: Get cache entry count
+      description: Returns number of items in fs cache.
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+              example:
+                entries: 5
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+            example: {}
+  /pluginsctl/addPlugin:
+    post:
+      operationId: pluginsctl_addPlugin
+      tags:
+        - Plugins
+      summary: Add a plugin
+      description: Adds a web GUI plugin from GitHub.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                url:
+                  type: string
+                  example: https://github.com/user/plugin
+              required:
+                - url
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+  /pluginsctl/listPlugins:
+    post:
+      operationId: pluginsctl_listPlugins
+      tags:
+        - Plugins
+      summary: List plugins
+      description: Returns loaded and test plugins.
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  loadedPlugins:
+                    type: array
+                    items:
+                      type: object
+                  testPlugins:
+                    type: array
+                    items:
+                      type: object
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+            example: {}
+  /pluginsctl/getPluginsForType:
+    post:
+      operationId: pluginsctl_getPluginsForType
+      tags:
+        - Plugins
+      summary: Get plugins for a type
+      description: Returns plugins matching a MIME/plugin type.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                type:
+                  type: string
+                  example: video/mp4
+                pluginType:
+                  type: string
+                  enum:
+                    - DASHBOARD
+                    - FILE_HANDLER
+                    - TERMINAL
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+  /pluginsctl/listTestPlugins:
+    post:
+      operationId: pluginsctl_listTestPlugins
+      tags:
+        - Plugins
+      summary: List test plugins
+      description: Returns loaded test plugins.
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+            example: {}
+  /pluginsctl/removePlugin:
+    post:
+      operationId: pluginsctl_removePlugin
+      tags:
+        - Plugins
+      summary: Remove a plugin
+      description: Removes an installed plugin.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: user/my-plugin
+              required:
+                - name
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+  /pluginsctl/removeTestPlugin:
+    post:
+      operationId: pluginsctl_removeTestPlugin
+      tags:
+        - Plugins
+      summary: Remove a test plugin
+      description: Removes a test plugin.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+              required:
+                - name
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+  /debug/set-block-profile-rate:
+    post:
+      operationId: debug_set-block-profile-rate
+      tags:
+        - Debug
+      summary: Set block profile rate
+      description: Sets Go block profile rate.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                rate:
+                  type: integer
+              required:
+                - rate
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+  /debug/set-gc-percent:
+    post:
+      operationId: debug_set-gc-percent
+      tags:
+        - Debug
+      summary: Set GC percentage
+      description: Sets Go GC target percentage.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                gc-percent:
+                  type: integer
+              required:
+                - gc-percent
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+  /debug/set-mutex-profile-fraction:
+    post:
+      operationId: debug_set-mutex-profile-fraction
+      tags:
+        - Debug
+      summary: Set mutex profile fraction
+      description: Sets mutex contention profile fraction.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                rate:
+                  type: integer
+              required:
+                - rate
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object
+              example:
+                previousRate: 0
+  /debug/set-soft-memory-limit:
+    post:
+      operationId: debug_set-soft-memory-limit
+      tags:
+        - Debug
+      summary: Set soft memory limit
+      description: Sets Go runtime soft memory limit.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                mem-limit:
+                  type: integer
+                  example: 1073741824
+              required:
+                - mem-limit
+      responses:
+        "200":
+          description: Success.
+          content:
+            application/json:
+              schema:
+                type: object

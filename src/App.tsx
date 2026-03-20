@@ -5,7 +5,7 @@ function App() {
   return (
     <ApiReferenceReact
       configuration={{
-        url: "/openapi.json",
+        url: "/openapi.yaml",
         theme: "saturn",
         layout: "modern",
         darkMode: true,
