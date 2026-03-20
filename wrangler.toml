@@ -1,0 +1,4 @@
+name = "rclone-rc-api-docs"
+
+[assets]
+directory = "./dist"
