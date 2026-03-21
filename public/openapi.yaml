@@ -943,6 +943,14 @@ paths:
             application/json:
               schema:
                 type: object
+                example: { "greeting": "Hello auth" }
+        "401":
+          description: Unauthorized.
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: 401 Unauthorized
         "403":
           description: Authentication required.
           content:
@@ -955,7 +963,7 @@ paths:
                     const: 'authentication must be set up on the rc server to use \"rc/noopauth\" or the --rc-no-auth flag must be in use'
                   input:
                     type: object
-                    example: { "message": "Hello world" }
+                    example: { "greeting": "Hi there" }
                   path:
                     type: string
                     const: "rc/noopauth"
