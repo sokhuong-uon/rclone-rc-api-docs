@@ -1,4 +1,4 @@
-openapi: 3.2.0
+openapi: 3.1.0
 info:
   title: Rclone RC API
   version: "1.40"
@@ -441,49 +441,59 @@ components:
       properties:
         error:
           type: string
-          example: remote not found
+          examples:
+            - remote not found
         input:
           type: object
         status:
           type: integer
-          example: 500
+          examples:
+            - 500
         path:
           type: string
-          example: operations/list
+          examples:
+            - operations/list
     BadRequestResponse:
       type: object
       properties:
         error:
           type: string
-          example: 'Didn''t find key "fs" in input'
+          examples:
+            - 'Didn''t find key "fs" in input'
         input:
           type: object
         status:
           type: integer
-          example: 400
+          examples:
+            - 400
         path:
           type: string
-          example: operations/list
+          examples:
+            - operations/list
     ForbiddenResponse:
       type: object
       properties:
         error:
           type: string
-          example: authentication must be set up on the rc server to use this method
+          examples:
+            - authentication must be set up on the rc server to use this method
         input:
           type: object
         status:
           type: integer
-          example: 403
+          examples:
+            - 403
         path:
           type: string
-          example: rc/noopauth
+          examples:
+            - rc/noopauth
     AsyncResponse:
       type: object
       properties:
         jobid:
           type: integer
-          example: 1
+          examples:
+            - 1
         executeId:
           type: string
     VersionInfo:
@@ -491,7 +501,8 @@ components:
       properties:
         version:
           type: string
-          example: v1.73.2
+          examples:
+            - v1.73.2
         decomposed:
           type: array
           items:
@@ -502,56 +513,70 @@ components:
           type: boolean
         os:
           type: string
-          example: linux
+          examples:
+            - linux
         osKernel:
           type: string
-          example: "6.8.0-86-generic (x86_64)"
+          examples:
+            - "6.8.0-86-generic (x86_64)"
         osVersion:
           type: string
-          example: "ubuntu 24.04 (64 bit)"
+          examples:
+            - ubuntu 24.04 (64 bit)
         osArch:
           type: string
-          example: "arm64 (ARMv8 compatible)"
+          examples:
+            - arm64 (ARMv8 compatible)
         arch:
           type: string
-          example: arm64
+          examples:
+            - arm64
         goVersion:
           type: string
-          example: go1.26.1
+          examples:
+            - go1.26.1
         linking:
           type: string
-          example: static
+          examples:
+            - static
         goTags:
           type: string
-          example: "none"
+          examples:
+            - none
     BandwidthLimit:
       type: object
       properties:
         bytesPerSecond:
           type: integer
-          example: 1048576
+          examples:
+            - 1048576
         bytesPerSecondTx:
           type: integer
         bytesPerSecondRx:
           type: integer
         rate:
           type: string
-          example: 1M
+          examples:
+            - 1M
     ListItem:
       type: object
       properties:
         Path:
           type: string
-          example: documents/report.pdf
+          examples:
+            - documents/report.pdf
         Name:
           type: string
-          example: report.pdf
+          examples:
+            - report.pdf
         Size:
           type: integer
-          example: 1048576
+          examples:
+            - 1048576
         MimeType:
           type: string
-          example: application/pdf
+          examples:
+            - application/pdf
         ModTime:
           type: string
           format: date-time
@@ -725,22 +750,27 @@ components:
           default: 0
         CacheMaxAge:
           type: string
-          example: 1h0m0s
+          examples:
+            - 1h0m0s
         CacheMaxSize:
           type: string
-          example: 10G
+          examples:
+            - 10G
         ReadAhead:
           type: string
-          example: 128k
+          examples:
+            - 128k
     ServeInfo:
       type: object
       properties:
         id:
           type: string
-          example: nfs-ecfc6852
+          examples:
+            - nfs-ecfc6852
         addr:
           type: string
-          example: "[::]:4321"
+          examples:
+            - "[::]:4321"
         params:
           type: object
     ConfigPaths:
@@ -748,13 +778,16 @@ components:
       properties:
         cache:
           type: string
-          example: /home/user/.cache/rclone
+          examples:
+            - /home/user/.cache/rclone
         config:
           type: string
-          example: /home/user/.config/rclone/rclone.conf
+          examples:
+            - /home/user/.config/rclone/rclone.conf
         temp:
           type: string
-          example: /tmp
+          examples:
+            - /tmp
     OptionExample:
       type: object
       description: A predefined value that can be selected from a list.
@@ -790,25 +823,29 @@ components:
           description: >-
             Name of the option in snake_case. Becomes the command line flag
             with underscores replaced by hyphens.
-          example: log_level
+          examples:
+            - log_level
         FieldName:
           type: string
           description: >-
             Name of the field used in the RC. If blank, use Name. May contain
             "." for nested fields.
-          example: LogLevel
+          examples:
+            - LogLevel
         Help:
           type: string
           description: >-
             Help text. Starts with a single sentence on a single line. May be
             multiple lines separated by newline characters.
-          example: "Log level DEBUG|INFO|NOTICE|ERROR"
+          examples:
+            - "Log level DEBUG|INFO|NOTICE|ERROR"
         Groups:
           type: string
           description: >-
             Groups this option belongs to, as a comma-separated string for
             option classification.
-          example: Logging
+          examples:
+            - Logging
         Provider:
           type: string
           description: Set to filter on provider.
@@ -816,13 +853,15 @@ components:
           description: >-
             Default value for this option. The type varies depending on the
             option (string, number, boolean, array, object, or null).
-          example: 5
+          examples:
+            - 5
         Value:
           description: >-
             Current value of this option. Null if not explicitly set (the
             default is used).
           nullable: true
-          example: null
+          examples:
+            - null
         Examples:
           type: array
           description: >-
@@ -833,55 +872,66 @@ components:
         ShortOpt:
           type: string
           description: The short (single-character) command line option for this.
-          example: P
+          examples:
+            - P
         Hide:
           type: integer
           description: >-
             Visibility bitmask. If non-zero, this option is hidden from the
             configurator (1) or the command line (2), or both (3).
-          example: 0
+          examples:
+            - 0
         Required:
           type: boolean
           description: >-
             Whether this option is required, meaning value cannot be empty
             unless there is a Default set.
-          example: false
+          examples:
+            - false
         IsPassword:
           type: boolean
           description: Set if the option is a password.
-          example: false
+          examples:
+            - false
         NoPrefix:
           type: boolean
           description: Set if the option should not use the backend prefix.
-          example: true
+          examples:
+            - true
         Advanced:
           type: boolean
           description: Set if this is an advanced config option.
-          example: false
+          examples:
+            - false
         Exclusive:
           type: boolean
           description: >-
             Set if the answer can only be one of the Examples values (empty
             string allowed unless Required or Default is set).
-          example: false
+          examples:
+            - false
         Sensitive:
           type: boolean
           description: Set if this option should be redacted when using rclone config redacted.
-          example: false
+          examples:
+            - false
         DefaultStr:
           type: string
           description: Human-readable string representation of the Default value.
-          example: "NOTICE"
+          examples:
+            - "NOTICE"
         ValueStr:
           type: string
           description: Human-readable string representation of the current Value.
-          example: "NOTICE"
+          examples:
+            - "NOTICE"
         Type:
           type: string
           description: >-
             The type of this option (e.g. string, bool, int, Duration,
             SizeSuffix, LogLevel, FileMode, etc.).
-          example: LogLevel
+          examples:
+            - LogLevel
 paths:
   /rc/noop:
     post:
@@ -904,8 +954,8 @@ paths:
                 param2:
                   type: string
             example:
-              param1: one
-              param2: two
+              - param1: one
+                param2: two
       responses:
         "200":
           description: Success.
@@ -913,9 +963,9 @@ paths:
             application/json:
               schema:
                 type: object
-              example:
-                param1: one
-                param2: two
+              examples:
+                - param1: one
+                  param2: two
   /rc/noopauth:
     post:
       operationId: rc_noopauth
@@ -943,14 +993,16 @@ paths:
             application/json:
               schema:
                 type: object
-                example: { "greeting": "Hello auth" }
+                examples:
+                  - greeting: "Hello auth"
         "401":
           description: Unauthorized.
           content:
             text/plain:
               schema:
                 type: string
-                example: 401 Unauthorized
+                examples:
+                  - "401 Unauthorized"
         "403":
           description: Authentication required.
           content:
@@ -963,7 +1015,9 @@ paths:
                     const: 'authentication must be set up on the rc server to use \"rc/noopauth\" or the --rc-no-auth flag must be in use'
                   input:
                     type: object
-                    example: { "greeting": "Hi there" }
+                    examples:
+                      - greeting: "Hi there"
+                      - data: "Hmm!"
                   path:
                     type: string
                     const: "rc/noopauth"
@@ -1002,10 +1056,12 @@ paths:
                       properties:
                         Path:
                           type: string
-                          example: "backend/command"
+                          examples:
+                            - "backend/command"
                         Title:
                           type: string
-                          example: "Runs a backend command."
+                          examples:
+                            - "Runs a backend command."
                         AuthRequired:
                           type: boolean
                         Help:
@@ -1019,7 +1075,8 @@ paths:
           application/json:
             schema:
               type: object
-            example: {}
+            example:
+
   /rc/error:
     post:
       operationId: rc_error
@@ -1037,17 +1094,18 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-              example:
-                error: "arbitrary error on input map[]"
-                input: {}
-                path: "rc/error"
-                status: 500
+              examples:
+                - error: "arbitrary error on input map[]"
+                  input: {}
+                  path: "rc/error"
+                  status: 500
       requestBody:
         content:
           application/json:
             schema:
               type: object
-            example: {}
+            example:
+
   /rc/fatal:
     post:
       operationId: rc_fatal
@@ -1065,17 +1123,18 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-              example:
-                error: "panic received: fatal error on input map[]"
-                input: {}
-                path: "rc/fatal"
-                status: 500
+              examples:
+                - error: "panic received: fatal error on input map[]"
+                  input: {}
+                  path: "rc/fatal"
+                  status: 500
       requestBody:
         content:
           application/json:
             schema:
               type: object
-            example: {}
+            example:
+
   /rc/panic:
     post:
       operationId: rc_panic
@@ -1098,7 +1157,8 @@ paths:
           application/json:
             schema:
               type: object
-            example: {}
+            example:
+
   /core/version:
     post:
       operationId: core_version
@@ -1117,23 +1177,24 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/VersionInfo"
-              example:
-                version: v1.73.2
-                decomposed:
-                  - 1
-                  - 73
-                  - 2
-                isGit: false
-                isBeta: false
-                os: linux
-                arch: amd64
-                goVersion: go1.26.1
+              examples:
+                - version: v1.73.2
+                  decomposed:
+                    - 1
+                    - 73
+                    - 2
+                  isGit: false
+                  isBeta: false
+                  os: linux
+                  arch: amd64
+                  goVersion: go1.26.1
       requestBody:
         content:
           application/json:
             schema:
               type: object
-            example: {}
+            example:
+
   /core/pid:
     post:
       operationId: core_pid
@@ -1154,15 +1215,17 @@ paths:
                 properties:
                   pid:
                     type: integer
-                    example: 1
-              example:
-                pid: 12345
+                    examples:
+                      - 1
+              examples:
+                - pid: 12345
       requestBody:
         content:
           application/json:
             schema:
               type: object
-            example: {}
+            example:
+
   /core/memstats:
     post:
       operationId: core_memstats
@@ -1204,7 +1267,8 @@ paths:
           application/json:
             schema:
               type: object
-            example: {}
+            example:
+
   /core/gc:
     post:
       operationId: core_gc
@@ -1228,7 +1292,8 @@ paths:
           application/json:
             schema:
               type: object
-            example: {}
+            example:
+
   /core/du:
     post:
       operationId: core_du
@@ -1247,7 +1312,8 @@ paths:
               properties:
                 dir:
                   type: string
-                  example: /home/user
+                  examples:
+                    - /home/user
       responses:
         "200":
           description: Success.
@@ -1258,7 +1324,8 @@ paths:
                 properties:
                   dir:
                     type: string
-                    example: "/"
+                    examples:
+                      - "/"
                   info:
                     type: object
                     properties:
@@ -1268,12 +1335,12 @@ paths:
                         type: integer
                       Total:
                         type: integer
-              example:
-                dir: /
-                info:
-                  Available: 361769115648
-                  Free: 361785892864
-                  Total: 982141468672
+              examples:
+                - dir: /
+                  info:
+                    Available: 361769115648
+                    Free: 361785892864
+                    Total: 982141468672
   /core/bwlimit:
     post:
       operationId: core_bwlimit
@@ -1294,7 +1361,8 @@ paths:
                 rate:
                   type: string
                   description: Bandwidth limit, e.g. '1M', '1M:100k', 'off'
-                  example: 1M:100k
+                  examples:
+                    - 1M:100k
       responses:
         "200":
           description: Success.
@@ -1467,16 +1535,17 @@ paths:
                     nullable: true
                     items:
                       type: string
-              example:
-                groups:
-                  - job/1
-                  - job/2
+              examples:
+                - groups:
+                    - job/1
+                    - job/2
       requestBody:
         content:
           application/json:
             schema:
               type: object
-            example: {}
+            example:
+
   /core/quit:
     post:
       operationId: core_quit
@@ -1524,7 +1593,8 @@ paths:
               properties:
                 clear:
                   type: string
-                  example: mypassword
+                  examples:
+                    - mypassword
               required:
                 - clear
       responses:
@@ -1537,9 +1607,10 @@ paths:
                 properties:
                   obscured:
                     type: string
-                    example: "U2FsdGVkX1..."
-              example:
-                obscured: U2FsdGVkX1...
+                    examples:
+                      - "U2FsdGVkX1..."
+              examples:
+                - obscured: U2FsdGVkX1...
         "400":
           description: Missing required parameter.
           content:
@@ -1573,12 +1644,13 @@ paths:
               properties:
                 command:
                   type: string
-                  example: ls
+                  examples:
+                    - ls
                 arg:
                   type: array
                   items:
                     type: string
-                  example:
+                  examples:
                     - remote:path
                 opt:
                   type: object
@@ -1646,10 +1718,12 @@ paths:
               properties:
                 name:
                   type: string
-                  example: myremote
+                  examples:
+                    - myremote
                 type:
                   type: string
-                  example: s3
+                  examples:
+                    - s3
                 parameters:
                   type: object
                   additionalProperties:
@@ -1774,7 +1848,8 @@ paths:
               properties:
                 name:
                   type: string
-                  example: myremote
+                  examples:
+                    - myremote
               required:
                 - name
       responses:
@@ -1823,7 +1898,8 @@ paths:
               properties:
                 name:
                   type: string
-                  example: myremote
+                  examples:
+                    - myremote
               required:
                 - name
       responses:
@@ -1835,10 +1911,10 @@ paths:
                 type: object
                 additionalProperties:
                   type: string
-              example:
-                type: s3
-                provider: AWS
-                region: us-east-1
+              examples:
+                - type: s3
+                  provider: AWS
+                  region: us-east-1
         "400":
           description: Missing required parameter.
           content:
@@ -1880,11 +1956,11 @@ paths:
                   type: object
                   additionalProperties:
                     type: string
-              example:
-                my-s3:
+              examples:
+                - my-s3:
                   type: s3
                   region: us-east-1
-                my-drive:
+                - my-drive:
                   type: drive
         "403":
           description: Authentication required.
@@ -1903,7 +1979,8 @@ paths:
           application/json:
             schema:
               type: object
-            example: {}
+            example:
+
   /config/listremotes:
     post:
       operationId: config_listremotes
@@ -1921,7 +1998,8 @@ paths:
           application/json:
             schema:
               type: object
-            example: {}
+            example:
+
       responses:
         "200":
           description: Success.
@@ -1934,11 +2012,11 @@ paths:
                     type: array
                     items:
                       type: string
-              example:
-                remotes:
-                  - my-s3
-                  - my-drive
-                  - my-dropbox
+              examples:
+                - remotes:
+                    - my-s3
+                    - my-drive
+                    - my-dropbox
         "403":
           description: Authentication required.
           content:
@@ -2025,7 +2103,8 @@ paths:
           application/json:
             schema:
               type: object
-            example: {}
+            example:
+
   /config/providers:
     post:
       operationId: config_providers
@@ -2080,7 +2159,8 @@ paths:
           application/json:
             schema:
               type: object
-            example: {}
+            example:
+
   /config/setpath:
     post:
       operationId: config_setpath
@@ -2102,7 +2182,8 @@ paths:
               properties:
                 path:
                   type: string
-                  example: /etc/rclone/rclone.conf
+                  examples:
+                    - /etc/rclone/rclone.conf
               required:
                 - path
       responses:
@@ -2194,10 +2275,12 @@ paths:
               properties:
                 fs:
                   type: string
-                  example: drive:documents
+                  examples:
+                    - drive:documents
                 remote:
                   type: string
-                  example: subfolder
+                  examples:
+                    - subfolder
                 opt:
                   $ref: "#/components/schemas/ListOptions"
               required:
@@ -2253,10 +2336,12 @@ paths:
               properties:
                 fs:
                   type: string
-                  example: "drive:"
+                  examples:
+                    - "drive:"
                 remote:
                   type: string
-                  example: report.pdf
+                  examples:
+                    - report.pdf
                 opt:
                   $ref: "#/components/schemas/ListOptions"
               required:
@@ -2313,7 +2398,8 @@ paths:
               properties:
                 fs:
                   type: string
-                  example: "drive:"
+                  examples:
+                    - "drive:"
               required:
                 - fs
       responses:
@@ -2370,10 +2456,12 @@ paths:
               properties:
                 fs:
                   type: string
-                  example: "drive:"
+                  examples:
+                    - "drive:"
                 remote:
                   type: string
-                  example: new-folder
+                  examples:
+                    - new-folder
               required:
                 - fs
                 - remote
@@ -2582,16 +2670,20 @@ paths:
               properties:
                 srcFs:
                   type: string
-                  example: "drive:"
+                  examples:
+                    - "drive:"
                 srcRemote:
                   type: string
-                  example: file.txt
+                  examples:
+                    - file.txt
                 dstFs:
                   type: string
-                  example: s3:bucket
+                  examples:
+                    - s3:bucket
                 dstRemote:
                   type: string
-                  example: backup/file.txt
+                  examples:
+                    - backup/file.txt
               required:
                 - srcFs
                 - srcRemote
@@ -2706,7 +2798,8 @@ paths:
                   type: string
                 url:
                   type: string
-                  example: https://example.com/file.zip
+                  examples:
+                    - https://example.com/file.zip
                 autoFilename:
                   type: boolean
                   default: false
@@ -2761,7 +2854,8 @@ paths:
               properties:
                 fs:
                   type: string
-                  example: drive:temp
+                  examples:
+                    - drive:temp
               required:
                 - fs
       responses:
@@ -2863,7 +2957,8 @@ paths:
               properties:
                 fs:
                   type: string
-                  example: "drive:"
+                  examples:
+                    - "drive:"
               required:
                 - fs
       responses:
@@ -2913,7 +3008,8 @@ paths:
               properties:
                 fs:
                   type: string
-                  example: "drive:"
+                  examples:
+                    - "drive:"
               required:
                 - fs
       responses:
@@ -2933,18 +3029,20 @@ paths:
                     type: array
                     items:
                       type: string
-                    example: ["md5", "sha1", "crc32", "sha256"]
+                    examples: ["md5", "sha1", "crc32", "sha256"]
                   Name:
                     type: string
                     description: "Name of the remote as created."
-                    example: "local"
+                    examples:
+                      - "local"
                   Precision:
                     type: integer
                     description: "Precision of timestamps in nanoseconds."
                   Root:
                     type: string
                     description: "Root path of the remote."
-                    example: "/"
+                    examples:
+                      - "/"
                   String:
                     type: string
                     description: "Human-readable description of the remote."
@@ -2989,7 +3087,8 @@ paths:
               properties:
                 fs:
                   type: string
-                  example: drive:documents
+                  examples:
+                    - drive:documents
               required:
                 - fs
       responses:
@@ -3007,9 +3106,10 @@ paths:
                   sizeless:
                     type: integer
                     description: "Number of files with unknown size."
-              example:
-                count: 42
-                bytes: 104857600
+              examples:
+                - count: 42
+                  bytes: 104857600
+                  sizeless: 0
         "400":
           description: Missing required parameter.
           content:
@@ -3056,7 +3156,8 @@ paths:
                   default: false
                 expire:
                   type: string
-                  example: 24h
+                  examples:
+                    - 24h
               required:
                 - fs
                 - remote
@@ -3070,9 +3171,10 @@ paths:
                 properties:
                   url:
                     type: string
-                    example: "https://drive.google.com/file/d/..."
-              example:
-                url: https://drive.google.com/file/d/...
+                    examples:
+                      - "https://drive.google.com/file/d/..."
+              examples:
+                - url: https://drive.google.com/file/d/...
         "400":
           description: Missing required parameter.
           content:
@@ -3137,7 +3239,8 @@ paths:
                 properties:
                   hashType:
                     type: string
-                    example: "md5"
+                    examples:
+                      - "md5"
                   hashsum:
                     type: array
                     items:
@@ -3205,7 +3308,8 @@ paths:
                     type: string
                   hashType:
                     type: string
-                    example: "md5"
+                    examples:
+                      - "md5"
         "400":
           description: Missing required parameter.
           content:
@@ -3279,7 +3383,8 @@ paths:
                     type: boolean
                   status:
                     type: string
-                    example: "OK"
+                    examples:
+                      - "OK"
                   hashType:
                     type: string
                   combined:
@@ -3438,20 +3543,27 @@ paths:
         files or entire directories, use sync/copy instead.
       security:
         - basicAuth: []
+      parameters:
+        - name: fs
+          in: query
+          required: true
+          schema:
+            type: string
+          description: The remote to upload to (e.g. "drive:").
+        - name: remote
+          in: query
+          required: true
+          schema:
+            type: string
+          description: The path to upload the file to.
       requestBody:
         content:
           multipart/form-data:
             schema:
               type: object
               required:
-                - fs
-                - remote
                 - file
               properties:
-                fs:
-                  type: string
-                remote:
-                  type: string
                 file:
                   type: string
                   format: binary
@@ -3502,10 +3614,12 @@ paths:
               properties:
                 srcFs:
                   type: string
-                  example: drive:documents
+                  examples:
+                    - drive:documents
                 dstFs:
                   type: string
-                  example: s3:backup
+                  examples:
+                    - s3:backup
                 createEmptySrcDirs:
                   type: boolean
                   default: false
@@ -3625,10 +3739,12 @@ paths:
               properties:
                 srcFs:
                   type: string
-                  example: drive:master
+                  examples:
+                    - drive:master
                 dstFs:
                   type: string
-                  example: s3:mirror
+                  examples:
+                    - s3:mirror
                 createEmptySrcDirs:
                   type: boolean
                 _async:
@@ -3685,10 +3801,12 @@ paths:
               properties:
                 path1:
                   type: string
-                  example: drive:sync
+                  examples:
+                    - drive:sync
                 path2:
                   type: string
-                  example: /local/sync
+                  examples:
+                    - /local/sync
                 dryRun:
                   type: boolean
                 resync:
@@ -3761,10 +3879,12 @@ paths:
               properties:
                 fs:
                   type: string
-                  example: "drive:"
+                  examples:
+                    - "drive:"
                 mountPoint:
                   type: string
-                  example: /mnt/drive
+                  examples:
+                    - /mnt/drive
                 mountType:
                   type: string
                   enum:
@@ -3831,7 +3951,8 @@ paths:
               properties:
                 mountPoint:
                   type: string
-                  example: /mnt/drive
+                  examples:
+                    - /mnt/drive
               required:
                 - mountPoint
       responses:
@@ -3897,7 +4018,8 @@ paths:
           application/json:
             schema:
               type: object
-            example: {}
+            example:
+
   /mount/listmounts:
     post:
       operationId: mount_listmounts
@@ -3933,7 +4055,8 @@ paths:
           application/json:
             schema:
               type: object
-            example: {}
+            example:
+
   /mount/types:
     post:
       operationId: mount_types
@@ -3957,17 +4080,18 @@ paths:
                     type: array
                     items:
                       type: string
-              example:
-                mountTypes:
-                  - mount
-                  - cmount
-                  - mount2
+              examples:
+                - mountTypes:
+                    - mount
+                    - cmount
+                    - mount2
       requestBody:
         content:
           application/json:
             schema:
               type: object
-            example: {}
+            example:
+
   /vfs/refresh:
     post:
       operationId: vfs_refresh
@@ -4087,7 +4211,8 @@ paths:
           application/json:
             schema:
               type: object
-            example: {}
+            example:
+
   /vfs/stats:
     post:
       operationId: vfs_stats
@@ -4141,10 +4266,12 @@ paths:
                   type: string
                 interval:
                   type: string
-                  example: 1m
+                  examples:
+                    - 1m
                 timeout:
                   type: string
-                  example: 30s
+                  examples:
+                    - 30s
       responses:
         "200":
           description: Success.
@@ -4267,7 +4394,8 @@ paths:
                 properties:
                   executeId:
                     type: string
-                    example: "d794c33c-463e-4acf-b911-f4b23e4f40b7"
+                    examples:
+                      - "d794c33c-463e-4acf-b911-f4b23e4f40b7"
                   jobids:
                     type: array
                     items:
@@ -4296,7 +4424,8 @@ paths:
           application/json:
             schema:
               type: object
-            example: {}
+            example:
+
   /job/status:
     post:
       operationId: job_status
@@ -4316,7 +4445,8 @@ paths:
               properties:
                 jobid:
                   type: integer
-                  example: 1
+                  examples:
+                    - 1
               required:
                 - jobid
       responses:
@@ -4443,7 +4573,8 @@ paths:
               properties:
                 concurrency:
                   type: integer
-                  example: 4
+                  examples:
+                    - 4
                 inputs:
                   type: array
                   items:
@@ -4517,10 +4648,12 @@ paths:
                     - s3
                 fs:
                   type: string
-                  example: "drive:"
+                  examples:
+                    - "drive:"
                 addr:
                   type: string
-                  example: :8080
+                  examples:
+                    - :8080
                 vfs_cache_mode:
                   type: string
                   enum:
@@ -4538,9 +4671,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ServeInfo"
-              example:
-                addr: "[::]:4321"
-                id: nfs-ecfc6852
+              examples:
+                - addr: "[::]:4321"
+                  id: nfs-ecfc6852
         "400":
           description: Missing required parameter.
           content:
@@ -4577,7 +4710,8 @@ paths:
               properties:
                 id:
                   type: string
-                  example: nfs-ecfc6852
+                  examples:
+                    - nfs-ecfc6852
               required:
                 - id
       responses:
@@ -4623,7 +4757,8 @@ paths:
           application/json:
             schema:
               type: object
-            example: {}
+            example:
+
   /serve/list:
     post:
       operationId: serve_list
@@ -4651,7 +4786,8 @@ paths:
           application/json:
             schema:
               type: object
-            example: {}
+            example:
+
   /serve/types:
     post:
       operationId: serve_types
@@ -4688,7 +4824,8 @@ paths:
           application/json:
             schema:
               type: object
-            example: {}
+            example:
+
   /options/get:
     post:
       operationId: options_get
@@ -4708,7 +4845,8 @@ paths:
               properties:
                 blocks:
                   type: string
-                  example: main,filter
+                  examples:
+                    - main,filter
       responses:
         "200":
           description: Success.
@@ -4743,7 +4881,8 @@ paths:
           application/json:
             schema:
               type: object
-            example: {}
+            example:
+
   /options/info:
     post:
       operationId: options_info
@@ -4809,7 +4948,8 @@ paths:
           application/json:
             schema:
               type: object
-            example: {}
+            example:
+
   /options/local:
     post:
       operationId: options_local
@@ -4838,7 +4978,8 @@ paths:
           application/json:
             schema:
               type: object
-            example: {}
+            example:
+
   /cache/expire:
     post:
       operationId: cache_expire
@@ -4860,7 +5001,8 @@ paths:
               properties:
                 remote:
                   type: string
-                  example: path/to/folder/
+                  examples:
+                    - path/to/folder/
                 withData:
                   type: boolean
                   default: false
@@ -4913,7 +5055,8 @@ paths:
               properties:
                 chunks:
                   type: string
-                  example: ":5,-5:"
+                  examples:
+                    - ":5,-5:"
                 file:
                   type: string
       responses:
@@ -4959,7 +5102,8 @@ paths:
           application/json:
             schema:
               type: object
-            example: {}
+            example:
+
   /backend/command:
     post:
       operationId: backend_command
@@ -4982,10 +5126,12 @@ paths:
               properties:
                 command:
                   type: string
-                  example: noop
+                  examples:
+                    - noop
                 fs:
                   type: string
-                  example: "drive:"
+                  examples:
+                    - "drive:"
                 arg:
                   type: array
                   items:
@@ -5008,13 +5154,13 @@ paths:
                   result:
                     type: object
                     description: "Result from the backend command."
-              example:
-                result:
-                  arg:
-                    - path1
-                  name: noop
-                  opt:
-                    echo: yes
+              examples:
+                - result:
+                    arg:
+                      - path1
+                    name: noop
+                    opt:
+                      echo: yes
         "403":
           description: Authentication required.
           content:
@@ -5051,7 +5197,8 @@ paths:
           application/json:
             schema:
               type: object
-            example: {}
+            example:
+
   /fscache/entries:
     post:
       operationId: fscache_entries
@@ -5072,14 +5219,15 @@ paths:
                 properties:
                   entries:
                     type: integer
-              example:
-                entries: 5
+              examples:
+                - entries: 5
       requestBody:
         content:
           application/json:
             schema:
               type: object
-            example: {}
+            example:
+
   /pluginsctl/addPlugin:
     post:
       operationId: pluginsctl_addPlugin
@@ -5098,7 +5246,8 @@ paths:
               properties:
                 url:
                   type: string
-                  example: https://github.com/user/plugin
+                  examples:
+                    - https://github.com/user/plugin
               required:
                 - url
       responses:
@@ -5151,7 +5300,8 @@ paths:
           application/json:
             schema:
               type: object
-            example: {}
+            example:
+
   /pluginsctl/getPluginsForType:
     post:
       operationId: pluginsctl_getPluginsForType
@@ -5171,7 +5321,8 @@ paths:
               properties:
                 type:
                   type: string
-                  example: video/mp4
+                  examples:
+                    - video/mp4
                 pluginType:
                   type: string
                   enum:
@@ -5216,7 +5367,8 @@ paths:
           application/json:
             schema:
               type: object
-            example: {}
+            example:
+
   /pluginsctl/removePlugin:
     post:
       operationId: pluginsctl_removePlugin
@@ -5235,7 +5387,8 @@ paths:
               properties:
                 name:
                   type: string
-                  example: user/my-plugin
+                  examples:
+                    - user/my-plugin
               required:
                 - name
       responses:
@@ -5411,8 +5564,8 @@ paths:
                 properties:
                   previousRate:
                     type: integer
-              example:
-                previousRate: 0
+              examples:
+                - previousRate: 0
         "400":
           description: Missing required parameter.
           content:
@@ -5445,7 +5598,8 @@ paths:
               properties:
                 mem-limit:
                   type: integer
-                  example: 1073741824
+                  examples:
+                    - 1073741824
               required:
                 - mem-limit
       responses:
