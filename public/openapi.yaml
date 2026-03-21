@@ -2285,6 +2285,19 @@ paths:
                   $ref: "#/components/schemas/ListOptions"
               required:
                 - fs
+            example:
+              fs: "/data"
+              remote: ""
+              opt:
+                recurse: false
+                noModTime: false
+                showEncrypted: false
+                showOrigIDs: false
+                showHash: false
+                noMimeType: false
+                dirsOnly: false
+                filesOnly: false
+                metadata: false
       responses:
         "200":
           description: Success.
