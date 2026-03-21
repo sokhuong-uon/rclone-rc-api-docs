@@ -1,0 +1,38 @@
+services:
+  minio:
+    image: minio/minio:latest
+    container_name: minio-in-rclone-rc-minio-s3-example
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    ports:
+      - "9000:9000" # S3 API
+      - "9001:9001" # Web console
+    volumes:
+      - ./minio-data-for-rclone-rc-minio-s3-example:/data
+
+  rclone-rc:
+    image: rclone/rclone:latest
+    container_name: rclone-rc-in-rclone-rc-minio-s3-example
+    depends_on:
+      - minio
+    command:
+      - rcd
+      - --rc-addr=:5572
+      - --rc-user=${RC_USER}
+      - --rc-pass=${RC_PASS}
+      - --rc-allow-origin=${RC_ALLOW_ORIGIN}
+      - --log-level=INFO
+      - --log-file=/logs/rclone.log
+      # Optional: expose web GUI too
+      # - --rc-web-gui
+      # - --rc-web-gui-no-open-browser
+    ports:
+      - "5572:5572"
+    volumes:
+      - ./rclone-config/minio:/config/rclone
+      - ./logs:/logs
+    environment:
+      - RCLONE_CONFIG=/config/rclone/rclone.conf
+    restart: unless-stopped
