@@ -755,6 +755,133 @@ components:
         temp:
           type: string
           example: /tmp
+    OptionExample:
+      type: object
+      description: A predefined value that can be selected from a list.
+      properties:
+        Value:
+          type: string
+          description: The example value.
+        Help:
+          type: string
+          description: Help text for this example value.
+    OptionInfo:
+      type: object
+      description: >-
+        Describes a single rclone configuration option. Used by options/info
+        (for main config) and config/providers (for backend config) to expose
+        option metadata for building UIs.
+      required:
+        - Name
+        - FieldName
+        - Help
+        - Default
+        - Value
+        - Hide
+        - Required
+        - IsPassword
+        - NoPrefix
+        - Advanced
+        - Exclusive
+        - Sensitive
+      properties:
+        Name:
+          type: string
+          description: >-
+            Name of the option in snake_case. Becomes the command line flag
+            with underscores replaced by hyphens.
+          example: log_level
+        FieldName:
+          type: string
+          description: >-
+            Name of the field used in the RC. If blank, use Name. May contain
+            "." for nested fields.
+          example: LogLevel
+        Help:
+          type: string
+          description: >-
+            Help text. Starts with a single sentence on a single line. May be
+            multiple lines separated by newline characters.
+          example: "Log level DEBUG|INFO|NOTICE|ERROR"
+        Groups:
+          type: string
+          description: >-
+            Groups this option belongs to, as a comma-separated string for
+            option classification.
+          example: Logging
+        Provider:
+          type: string
+          description: Set to filter on provider.
+        Default:
+          description: >-
+            Default value for this option. The type varies depending on the
+            option (string, number, boolean, array, object, or null).
+          example: 5
+        Value:
+          description: >-
+            Current value of this option. Null if not explicitly set (the
+            default is used).
+          nullable: true
+          example: null
+        Examples:
+          type: array
+          description: >-
+            Predefined values that can be selected from a list
+            (multiple-choice option).
+          items:
+            $ref: "#/components/schemas/OptionExample"
+        ShortOpt:
+          type: string
+          description: The short (single-character) command line option for this.
+          example: P
+        Hide:
+          type: integer
+          description: >-
+            Visibility bitmask. If non-zero, this option is hidden from the
+            configurator (1) or the command line (2), or both (3).
+          example: 0
+        Required:
+          type: boolean
+          description: >-
+            Whether this option is required, meaning value cannot be empty
+            unless there is a Default set.
+          example: false
+        IsPassword:
+          type: boolean
+          description: Set if the option is a password.
+          example: false
+        NoPrefix:
+          type: boolean
+          description: Set if the option should not use the backend prefix.
+          example: true
+        Advanced:
+          type: boolean
+          description: Set if this is an advanced config option.
+          example: false
+        Exclusive:
+          type: boolean
+          description: >-
+            Set if the answer can only be one of the Examples values (empty
+            string allowed unless Required or Default is set).
+          example: false
+        Sensitive:
+          type: boolean
+          description: Set if this option should be redacted when using rclone config redacted.
+          example: false
+        DefaultStr:
+          type: string
+          description: Human-readable string representation of the Default value.
+          example: "NOTICE"
+        ValueStr:
+          type: string
+          description: Human-readable string representation of the current Value.
+          example: "NOTICE"
+        Type:
+          type: string
+          description: >-
+            The type of this option (e.g. string, bool, int, Duration,
+            SizeSuffix, LogLevel, FileMode, etc.).
+          example: LogLevel
 paths:
   /rc/noop:
     post:
@@ -4603,10 +4730,13 @@ paths:
         - Options
       summary: Get option metadata
       description: >-
-        Returns metadata about all available options, including their types,
-        default values, and human-readable descriptions. Use this to build
-        dynamic configuration forms or to understand what each option does
-        before changing it with options/set.
+        Returns metadata about all available options as arrays of Option
+        blocks. Each Option block describes a single configuration flag,
+        including its name, type, default value, help text, validation
+        constraints, and predefined example values. Use this to build
+        dynamic configuration UIs or to understand what each option does
+        before changing it with options/set. Also see config/providers for
+        backend-specific option metadata in the same format.
       requestBody:
         content:
           application/json:
@@ -4622,22 +4752,14 @@ paths:
             application/json:
               schema:
                 type: object
-                description: "Map of option block names to arrays of option metadata objects."
+                description: >-
+                  Map of option block names (e.g. "main", "filter", "rc") to
+                  arrays of Option metadata objects. Each Option describes a
+                  single configuration flag.
                 additionalProperties:
                   type: array
                   items:
-                    type: object
-                    properties:
-                      Name:
-                        type: string
-                      FieldName:
-                        type: string
-                      Help:
-                        type: string
-                      Default: {}
-                      Value: {}
-                      Type:
-                        type: string
+                    $ref: "#/components/schemas/OptionInfo"
   /options/blocks:
     post:
       operationId: options_blocks
