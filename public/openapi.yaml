@@ -1719,7 +1719,7 @@ paths:
                 name:
                   type: string
                   examples:
-                    - myremote
+                    - Cat pics
                 type:
                   type: string
                   examples:
@@ -1741,12 +1741,15 @@ paths:
                 - name
                 - type
             example:
-              name: my-s3
+              name: Cat pics
               type: s3
               parameters:
-                provider: AWS
+                provider: Cloudflare
                 access_key_id: AKIAIOSFODNN7EXAMPLE
-                region: us-east-1
+                secret_access_key: your-secret-access-key
+                region: "auto"
+                endpoint: https://ACCOUNT_ID.r2.cloudflarestorage.com/my-cat-pics
+                acl: private
               opt:
                 nonInteractive: true
       responses:

@@ -2,7 +2,7 @@ services:
   rclone-storage:
     image: rclone/rclone:latest
     container_name: rclone-storage-in-rclone-webdav-example
-    command: ["serve", "webdav", "/data", "--addr", ":8080", "--no-auth"]
+    command: ["serve", "webdav", "/data", "--addr", ":8080"]
     ports:
       - "8080:8080"
     volumes:
